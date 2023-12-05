@@ -100,6 +100,18 @@ namespace fv
 
 // * * * * * * * * * * * * Private Member Functions  * * * * * * * * * * * //
 
+/*
+    checkData function
+
+    Args:
+        - none
+
+    Checks for:
+        - diskArea being almost zero
+        - Cp and Ct being negative
+        - magnitude of disk direction vector being almost zero
+        - not finding de disk center point in the mesh  
+*/
 void Foam::fv::actuationDiskRingsV11_calib_Source::checkData() const
 {
 
@@ -134,6 +146,33 @@ void Foam::fv::actuationDiskRingsV11_calib_Source::checkData() const
 
 // * * * * * * * * * * * * * * * * Constructors  * * * * * * * * * * * * * * //
 
+/*
+    actuationDiskRingsV11_calib_Source constructor. (defined outside the class)
+
+    Args:
+        - name
+        - modelType
+        - dict
+        - mesh
+    
+
+    Initializes:
+        - diskCellId - gets the cell Id for the diskPoint
+        - maxR - radius of the DA
+        - cellInAd - amount of cells in DA
+        - estimatedNodes - estimated nodes from nodesCellsRatio and cellsInAd
+        - secArea - area corresponding to each node
+        - rInt - internal radius (radius of first ring of nodes)
+        - rExt - external radius = maxR
+        - ringThickness - first estimation rThicknessCellsizeRatio and cellSize, then corrected by ext and int radius and numberRings
+        - numberRings - number of rings, from rounding difference in ext and int radius and dividing by estimated ringThickness
+        - ringNodesList - list with amount of nodes in a ring
+        - ringTitaList - list with angle of separation between nodes for each ring
+        - ringrMedList - list with medium radius for each ring
+        - ringAreaList - list with ring area for each ring
+        - 
+
+*/
 Foam::fv::actuationDiskRingsV11_calib_Source::actuationDiskRingsV11_calib_Source
 (
     const word& name,
