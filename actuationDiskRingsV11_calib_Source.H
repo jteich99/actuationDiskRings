@@ -100,10 +100,7 @@ class actuationDiskRingsV11_calib_Source
     public cellSetOption
     //public option //---new line
 {
-
-protected:
-
-    // Protected data
+    protected: // Protected data
 
         //- Disk area normal
         vector diskDir_;
@@ -114,7 +111,7 @@ protected:
         //- Thrust coefficient
         scalar Ct_;
 
-	    //- Fixed Uinf for thrust calculation
+        //- Fixed Uinf for thrust calculation
         scalar Uref_;
 
         //- cell size in the disc
@@ -132,7 +129,7 @@ protected:
         //- Disk area
         scalar diskArea_;
 
-    	//- Disc center point sample
+        //- Disc center point sample
         point diskPoint_;
 
         //- Root factor on/off
@@ -156,11 +153,11 @@ protected:
         //Interpolation by means of Grad(U).
         scalar gradInterpolation_; 
 
-	    //- disk cell ID
+        //- disk cell ID
         label diskCellId_;
 
-	    //--test--------------------------------------
-	    //the permanent variables have "_" in the end
+        //--test--------------------------------------
+        //the permanent variables have "_" in the end
 
         //for calculating number of rings and nodes
         
@@ -210,11 +207,11 @@ protected:
         DynamicList<scalar> ringrMedList_;
         DynamicList<scalar> ringAreaList_;
 
-	    //direction of the disc
-	    scalar yawRad_;
-	    vector diskYawed_;
-	    vector uniDiskDir_;
-	    
+        //direction of the disc
+        scalar yawRad_;
+        vector diskYawed_;
+        vector uniDiskDir_;
+        
         //For calculating node positions
         //angle between nodes in a certain ring         
         scalar tita_r_;
@@ -228,10 +225,10 @@ protected:
         //Nodes counter
         scalar total_nodes_counter_;
 
-	    //List of cell ID for each node
-	    List<label> nodeCellID_;
+        //List of cell ID for each node
+        List<label> nodeCellID_;
 
-	//--------------------------------------------
+    //--------------------------------------------
 
 private:
 
@@ -241,6 +238,7 @@ private:
         void checkData() const;
 
         //- Add resistance to the UEqn
+        
         template<class RhoFieldType>
         void addactuationDiskRingsV11_calib_AxialInertialResistance
         (
