@@ -82,6 +82,19 @@ SourceFiles
 #include <map>
 // * * * * * * * * * * * * * * *  Member Functions * * * * * * * * * * * * * //
 
+/*
+    Add resistance to the Ueqn
+
+    Args:
+        - Usource
+        - cells
+        - Vcells
+        - rho
+        - U
+        - force
+
+    
+*/
 template<class RhoFieldType>
 void Foam::fv::actuationDiskRingsV11_calib_Source::addactuationDiskRingsV11_calib_AxialInertialResistance
 (
