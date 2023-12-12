@@ -170,7 +170,10 @@ void Foam::fv::actuationDiskRingsV11_calib_Source::checkData() const
         - ringTitaList - list with angle of separation between nodes for each ring
         - ringrMedList - list with medium radius for each ring
         - ringAreaList - list with ring area for each ring
-        - 
+        - nodesNumber - amount of nodes
+        - yawRad - direction of the disk in radians
+        - diskYawed - normal vector to the disk rotated by yawRad
+        - nodeCellId - list that stores de cell id of each node by a loop to find node coordinates and then find the closest cell in the domain to it, and then store it
 
 */
 Foam::fv::actuationDiskRingsV11_calib_Source::actuationDiskRingsV11_calib_Source
