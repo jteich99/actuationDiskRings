@@ -526,9 +526,8 @@ else
             //Shen tip correction factor:
             scalar fcorr=0.0;
             scalar tipfactor = 1;
-            // scalar tipfactor_f = (nblades_/2)*(maxR - radius)/(radius*sin(phi));
-            scalar tipfactor_f = exp(-(nblades_*(1-radius))/(2*radius*sin(phi)));
-            Info << "Calculating tip factor" << endl;
+            scalar tipfactor_f = (nblades_/2)*(maxR - radius)/(radius*sin(phi));
+
             if (tipFactor_ == 1) //If tip factor is on
             {
                 scalar c1=0.125;
@@ -538,31 +537,25 @@ else
                 //scalar tipfactor_f = (nblades_/2)*(maxR - radius)/(radius*sin(phi)); Movemos antes del if
                 //Info << "tipfactor_f " << tipfactor_f << endl;
                 g=exp(-c1*(nblades_*tsr-c2))+c3;
-                Info << "tipfactor_f = " << tipfactor_f << endl;
                 if (tipfactor_f > 0)
                         {
-                        // if(((exp(-g*tipfactor_f))>-1) and ((exp(-g*tipfactor_f))<1))
-                        if(((tipfactor_f)>-1) and ((tipfactor_f)<1))
+                        if(((exp(-g*tipfactor_f))>-1) and ((exp(-g*tipfactor_f))<1))
                                 {
-                                // tipfactor = (2/(M_PI))*acos(exp(-g*tipfactor_f));
-                                Info << "Calculating tip factor, option 2" << endl;
-                                tipfactor = (2/(M_PI))*acos(tipfactor_f);
-                                // tipfactor = (2/(M_PI))*acos(exp(-g*tipfactor_f));
-                                Info << "Tip factor 2 calculation finished=" << tipfactor << endl;
+                                    tipfactor = (2/(M_PI))*acos(exp(-g*tipfactor_f));
                                 }
                         }
             }
-            // else if ( tipFactor_ == 2 ) //2nd option for tip factor computation
-            // {
-            //     Info << "Calculating tip factor, option 2" << endl;
-            //     tipfactor = (2/(M_PI))*acos(exp(-(nblades_*(1-radius))/(2*radius*sin(phi))));
-            //     Info << "Tip factor 2 calculation finished" << endl;
-            // }
+            else if ( tipFactor_ == 2 ) //2nd option for tip factor computation
+            {
+                scalar tipfactor_arg = exp(-(nblades_*(1-radius))/(2*radius*sin(phi)));
+                if (( tipfactor_f > -1 ) and ( tipfactor_f < 1 ))
+                {
+                    tipfactor = (2/(M_PI))*acos(tipfactor_arg);
+                }
+            }
 
-            //Info << "tipfactor: "<<tipfactor<<endl;
             //Glauert root correction factor:
             scalar rootfactor = 1;
-            Info << "Calculating root factor" << endl;
             if (rootFactor_ == 1) //If root factor is on
             {
                 if (radius <=root)
@@ -572,22 +565,29 @@ else
                 
                 if ( (radius > root) and (tipfactor_f>0) and (radius< maxR/2.0)   )
                 {
-                        scalar rootfactor_f = (nblades_/2)*(radius - 0.1*maxR)/(radius*sin(phi));
-                        scalar g=1;
-                        
-                        if ( ((exp(-g*rootfactor_f))>-1) and ((exp(-g*rootfactor_f))<1))
-                        {
-                                rootfactor = (2/(M_PI))*acos(exp(-g*rootfactor_f));
-                        }
+                    scalar rootfactor_f = (nblades_/2)*(radius - 0.1*maxR)/(radius*sin(phi));
+                    scalar g=1;
+                    
+                    if ( ((exp(-g*rootfactor_f))>-1) and ((exp(-g*rootfactor_f))<1))
+                    {
+                            rootfactor = (2/(M_PI))*acos(exp(-g*rootfactor_f));
+                    }
                         
                 }
             }
-            else if ( rootFactor_ == 2)
+            else if ( rootFactor_ == 2) //2nd option for root factor
             {
-                Info << "Calculating root factor, option 2" << endl;
-                scalar constantA = 2.335;
-                scalar constantB = 4;
-                rootfactor = 1 - exp( -constantA * pow(radius / (root / maxR), constantB ) );
+                if (radius <=root)
+                {
+                        rootfactor = 0;
+                }
+                
+                if ( (radius > root)  and (radius< maxR/2.0)   )
+                {
+                    scalar constantA = 2.335;
+                    scalar constantB = 4;
+                    rootfactor = 1 - exp( -constantA * pow(radius / (root / maxR), constantB ) );
+                }
             }
 
             //Info << "rootfactor: "<<rootfactor<<endl;
@@ -816,7 +816,11 @@ for (int ring =0; ring<=(numberRings_-1); ring=ring+1)
         }
         else if ( tipFactor_ == 2 ) //2nd option for tip factor computation
         {
-            tipfactor = (2 / (M_PI) ) * acos( exp( - (nblades_ * (1 - radius)) / (2 * radius * sin(phi)) ) );
+            scalar tipfactor_arg = exp(-(nblades_*(1-radius))/(2*radius*sin(phi)));
+            if (( tipfactor_f > -1 ) and ( tipfactor_f < 1 ))
+            {
+                tipfactor = (2/(M_PI))*acos(tipfactor_arg);
+            }
         }
 
         //Info << "tipfactor: "<<tipfactor<<endl;
@@ -831,21 +835,29 @@ for (int ring =0; ring<=(numberRings_-1); ring=ring+1)
             
             if ( (radius > root) and (tipfactor_f>0) and (radius< maxR/2.0)   )
             {
-                    scalar rootfactor_f = (nblades_/2)*(radius - 0.1*maxR)/(radius*sin(phi));
-                    scalar g=1;
-                    
-                    if ( ((exp(-g*rootfactor_f))>-1) and ((exp(-g*rootfactor_f))<1))
-                    {
-                            rootfactor = (2/(M_PI))*acos(exp(-g*rootfactor_f));
-                    }
+                scalar rootfactor_f = (nblades_/2)*(radius - 0.1*maxR)/(radius*sin(phi));
+                scalar g=1;
+                
+                if ( ((exp(-g*rootfactor_f))>-1) and ((exp(-g*rootfactor_f))<1))
+                {
+                        rootfactor = (2/(M_PI))*acos(exp(-g*rootfactor_f));
+                }
                     
             }
         }
-        else if ( rootFactor_ == 2)
+        else if ( rootFactor_ == 2) //2nd option for root factor
         {
-            scalar constantA = 2.335;
-            scalar constantB = 4;
-            rootfactor = 1 - exp( -constantA * pow(radius / (root / maxR), constantB ) );
+            if (radius <=root)
+            {
+                    rootfactor = 0;
+            }
+            
+            if ( (radius > root)  and (radius< maxR/2.0)   )
+            {
+                scalar constantA = 2.335;
+                scalar constantB = 4;
+                rootfactor = 1 - exp( -constantA * pow(radius / (root / maxR), constantB ) );
+            }
         }
 
 
