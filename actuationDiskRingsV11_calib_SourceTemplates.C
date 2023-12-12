@@ -136,7 +136,7 @@ scalar maxR = sqrt(diskArea_ / M_PI);
 
 //--------------------line orientation------------------------------------------------
 //-----Yaw rotation option
-vector uniDiskDir=vector(0,0,0);
+vector uniDiskDir = vector(0,0,0);
 scalar yawRad;
 
 if (yaw_ == 360)
@@ -225,7 +225,7 @@ scalar Cp = Cp_;
 
 //-----Thrust fixed------------------------------------------
 
-//calculate the uniform thrust force with out density
+//calculate the uniform thrust force without density
 float T= 0.50*upRho*diskArea_*pow (UrefYaw, 2)*Ct;
 //Info<< "Thrust fixed (with density): " << T *density_ << endl;
 
@@ -362,9 +362,10 @@ scalar sumTorque_Bixfactor = 0;
 const volVectorField& U_ = mesh().lookupObject<volVectorField>("U");
 volTensorField gradU = fvc::grad(U_);
 
-
+/*
+rootFactor_ y tipFactor_ are read in the .C file during initialization
+*/
 if ((rootFactor_ == 0) and (tipFactor_ == 0))
-
 {
     sumF_n_Bi = 1;
     sumF_n_Bixfactor = 1;
@@ -416,13 +417,12 @@ else
             //Info << "blade uni vector : "<< bladeUniDir<< endl;
 
             //calculate the tangential vector
-            F_tita_dir= vector(uniDiskDir[1]*bladeUniDir[2]-uniDiskDir[2]*bladeUniDir[1],
-                        -1*(uniDiskDir[0]*bladeUniDir[2]-uniDiskDir[2]*bladeUniDir[0]),
-                        uniDiskDir[0]*bladeUniDir[1]-uniDiskDir[1]*bladeUniDir[0]);
+            F_tita_dir= vector(uniDiskDir[1]*bladeUniDir[2]-uniDiskDir[2]*bladeUniDir[1], -1*(uniDiskDir[0]*bladeUniDir[2]-uniDiskDir[2]*bladeUniDir[0]), uniDiskDir[0]*bladeUniDir[1]-uniDiskDir[1]*bladeUniDir[0]); // vector product in between vector normal to disk and vector in radial direction --> gives vector in tangential direction
+            Info << "F_tita_dir is ok" << endl;
 
             //Info << "F_tita_dir: "<<F_tita_dir<< endl;
 
-            F_tita_dir=F_tita_dir/mag(F_tita_dir);
+            F_tita_dir=F_tita_dir/mag(F_tita_dir); // normalize tangential vector
             ////Info << "F_tita_dir" << F_tita_dir << endl;
 
             //calculate the tensor transformation of coordinates
@@ -434,9 +434,8 @@ else
             //Info << "vector_t " << vector_t << endl;
             //Info << "vector_r " << vector_r << endl;
 
-            tensor Transform(vector_n[0],vector_t[0],vector_r[0],
-                             vector_n[1],vector_t[1],vector_r[1],
-                             vector_n[2],vector_t[2],vector_r[2]);
+            tensor Transform(vector_n[0],vector_t[0],vector_r[0], vector_n[1],vector_t[1],vector_r[1], vector_n[2],vector_t[2],vector_r[2]); // tensor for base change to cylindrical coordinates
+            Info << "tesnor Transform is ok" << endl;
 
             vector Bi= vector(x_node,y_node,z_node);
             //Info << "Bi: "<< Bi << endl;
@@ -452,10 +451,10 @@ else
             if (nodeCellID_[total_nodes_counter] != -1) //if the closer cell is in this procesor
             {
 	            U_dPointCells =  U[nodeCellID_[total_nodes_counter]];
-        		if (gradInterpolation_ == 1)
+        		if (gradInterpolation_ == 1) // ?? condition
         		{     		
             		vector dx = Bi - mesh().cellCentres()[nodeCellID_[total_nodes_counter]];
-		            vector dU = dx & gradU[nodeCellID_[total_nodes_counter]];
+		            vector dU = dx & gradU[nodeCellID_[total_nodes_counter]]; // & = internal product of 2 vectors in OF --> scakar...
 		            U_dPointCells += dU;
                 }
             }
@@ -475,7 +474,7 @@ else
             //Info << "node: "<< total_nodes_counter << endl;
 
             //change of coordinate system
-            U_dPointCells_ntr = inv(Transform) & U_dPointCells;
+            U_dPointCells_ntr = inv(Transform) & U_dPointCells; // & = internal product of 2 vectors in OF
 
             //velocities in the profile coordinates
             U_n=-1* U_dPointCells_ntr[0];
@@ -514,7 +513,9 @@ else
             //Shen tip correction factor:
             scalar fcorr=0.0;
             scalar tipfactor = 1;
-            scalar tipfactor_f = (nblades_/2)*(maxR - radius)/(radius*sin(phi));
+            // scalar tipfactor_f = (nblades_/2)*(maxR - radius)/(radius*sin(phi));
+            scalar tipfactor_f = exp(-(nblades_*(1-radius))/(2*radius*sin(phi)));
+            Info << "Calculating tip factor" << endl;
             if (tipFactor_ == 1) //If tip factor is on
             {
                 scalar c1=0.125;
@@ -524,18 +525,31 @@ else
                 //scalar tipfactor_f = (nblades_/2)*(maxR - radius)/(radius*sin(phi)); Movemos antes del if
                 //Info << "tipfactor_f " << tipfactor_f << endl;
                 g=exp(-c1*(nblades_*tsr-c2))+c3;
+                Info << "tipfactor_f = " << tipfactor_f << endl;
                 if (tipfactor_f > 0)
                         {
-                        if(((exp(-g*tipfactor_f))>-1) and ((exp(-g*tipfactor_f))<1))
+                        // if(((exp(-g*tipfactor_f))>-1) and ((exp(-g*tipfactor_f))<1))
+                        if(((tipfactor_f)>-1) and ((tipfactor_f)<1))
                                 {
-                                tipfactor = (2/(M_PI))*acos(exp(-g*tipfactor_f));
+                                // tipfactor = (2/(M_PI))*acos(exp(-g*tipfactor_f));
+                                Info << "Calculating tip factor, option 2" << endl;
+                                tipfactor = (2/(M_PI))*acos(tipfactor_f);
+                                // tipfactor = (2/(M_PI))*acos(exp(-g*tipfactor_f));
+                                Info << "Tip factor 2 calculation finished=" << tipfactor << endl;
                                 }
                         }
             }
+            // else if ( tipFactor_ == 2 ) //2nd option for tip factor computation
+            // {
+            //     Info << "Calculating tip factor, option 2" << endl;
+            //     tipfactor = (2/(M_PI))*acos(exp(-(nblades_*(1-radius))/(2*radius*sin(phi))));
+            //     Info << "Tip factor 2 calculation finished" << endl;
+            // }
 
             //Info << "tipfactor: "<<tipfactor<<endl;
             //Glauert root correction factor:
             scalar rootfactor = 1;
+            Info << "Calculating root factor" << endl;
             if (rootFactor_ == 1) //If root factor is on
             {
                 if (radius <=root)
@@ -555,6 +569,14 @@ else
                         
                 }
             }
+            else if ( rootFactor_ == 2)
+            {
+                Info << "Calculating root factor, option 2" << endl;
+                scalar constantA = 2.335;
+                scalar constantB = 4;
+                rootfactor = 1 - exp( -constantA * pow(radius / (root / maxR), constantB ) );
+            }
+
             //Info << "rootfactor: "<<rootfactor<<endl;
             fcorr=tipfactor*rootfactor;
 
@@ -779,6 +801,10 @@ for (int ring =0; ring<=(numberRings_-1); ring=ring+1)
                             }
                     }
         }
+        else if ( tipFactor_ == 2 ) //2nd option for tip factor computation
+        {
+            tipfactor = (2 / (M_PI) ) * acos( exp( - (nblades_ * (1 - radius)) / (2 * radius * sin(phi)) ) );
+        }
 
         //Info << "tipfactor: "<<tipfactor<<endl;
         //Glauert root correction factor:
@@ -802,6 +828,14 @@ for (int ring =0; ring<=(numberRings_-1); ring=ring+1)
                     
             }
         }
+        else if ( rootFactor_ == 2)
+        {
+            scalar constantA = 2.335;
+            scalar constantB = 4;
+            rootfactor = 1 - exp( -constantA * pow(radius / (root / maxR), constantB ) );
+        }
+
+
         //Info << "rootfactor: "<<rootfactor<<endl;
         fcorr=tipfactor*rootfactor;
 		//Info << "fcorr: "<<fcorr<<endl;
@@ -980,10 +1014,9 @@ scalar tipfactor = 1;
 //Info << "tipfactor: "<<tipfactor<<endl;
 //Glauert root correction factor:
 scalar rootfactor = 1;
-if (rootFactor_ == 1) //If root factor is on
+if (rootFactor_ == 1 || rootFactor_ == 2) //If root factor is on
 {
     rootfactor = 0;
-
 }
     
 //Info << "rootfactor: "<<rootfactor<<endl;
