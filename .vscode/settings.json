@@ -1,9 +1,0 @@
-{
-    "files.associations": {
-        "actuationDiskRingsV11_calib_SourceTemplates.C": "cpp",
-        "actuationDiskRingsV11_calib_Source.C": "cpp",
-        "cmath": "cpp",
-        "complex": "cpp",
-        "random": "cpp"
-    }
-}
