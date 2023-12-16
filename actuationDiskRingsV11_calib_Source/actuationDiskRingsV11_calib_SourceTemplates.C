@@ -431,7 +431,7 @@ else
 
             //calculate the tangential vector
             F_tita_dir= vector(uniDiskDir[1]*bladeUniDir[2]-uniDiskDir[2]*bladeUniDir[1], -1*(uniDiskDir[0]*bladeUniDir[2]-uniDiskDir[2]*bladeUniDir[0]), uniDiskDir[0]*bladeUniDir[1]-uniDiskDir[1]*bladeUniDir[0]); // vector product in between vector normal to disk and vector in radial direction --> gives vector in tangential direction
-            Info << "F_tita_dir is ok" << endl;
+            // Info << "F_tita_dir is ok" << endl;
 
             //Info << "F_tita_dir: "<<F_tita_dir<< endl;
 
@@ -448,7 +448,7 @@ else
             //Info << "vector_r " << vector_r << endl;
 
             tensor Transform(vector_n[0],vector_t[0],vector_r[0], vector_n[1],vector_t[1],vector_r[1], vector_n[2],vector_t[2],vector_r[2]); // tensor for base change to cylindrical coordinates
-            Info << "tesnor Transform is ok" << endl;
+            // Info << "tesnor Transform is ok" << endl;
 
             vector Bi= vector(x_node,y_node,z_node);
             //Info << "Bi: "<< Bi << endl;
@@ -547,8 +547,9 @@ else
             }
             else if ( tipFactor_ == 2 ) //2nd option for tip factor computation
             {
+                Info << "calculating tipFactor" << endl;
                 scalar tipfactor_arg = exp(-(nblades_*(1-radius))/(2*radius*sin(phi)));
-                if (( tipfactor_f > -1 ) and ( tipfactor_f < 1 ))
+                if (( tipfactor_arg > -1 ) and ( tipfactor_arg < 1 ))
                 {
                     tipfactor = (2/(M_PI))*acos(tipfactor_arg);
                 }
@@ -577,11 +578,11 @@ else
             }
             else if ( rootFactor_ == 2) //2nd option for root factor
             {
+                Info << "calculating rootFactor" << endl;
                 if (radius <=root)
                 {
                         rootfactor = 0;
                 }
-                
                 if ( (radius > root)  and (radius< maxR/2.0)   )
                 {
                     scalar constantA = 2.335;
@@ -817,7 +818,7 @@ for (int ring =0; ring<=(numberRings_-1); ring=ring+1)
         else if ( tipFactor_ == 2 ) //2nd option for tip factor computation
         {
             scalar tipfactor_arg = exp(-(nblades_*(1-radius))/(2*radius*sin(phi)));
-            if (( tipfactor_f > -1 ) and ( tipfactor_f < 1 ))
+            if (( tipfactor_arg > -1 ) and ( tipfactor_arg < 1 ))
             {
                 tipfactor = (2/(M_PI))*acos(tipfactor_arg);
             }
