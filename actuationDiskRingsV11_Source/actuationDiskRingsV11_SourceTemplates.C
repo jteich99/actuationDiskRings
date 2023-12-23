@@ -244,6 +244,7 @@ forAll(cellsDisc, c)
 	if (dSphere <= maxR)
 		{
 			weightCellsAD[cellsDisc[c]] = weightCellsAD[cellsDisc[c]] * 1;
+			weightCellsAD[cellsDisc[c]] = weightCellsAD[cellsDisc[c]] * 1;
 		}
 	else
 		{
