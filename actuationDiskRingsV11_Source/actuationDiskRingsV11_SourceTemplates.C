@@ -282,7 +282,6 @@ forAll(cellsDisc, c)
     Vcenter += Vcells[cellsDisc[c]] * weightCellsADCenter[cellsDisc[c]];
     //---
 
-
     //---volume of the AD cells weighted
     V_AD += Vcells[cellsDisc[c]] * weightCellsAD[cellsDisc[c]];
     //---
@@ -296,15 +295,16 @@ reduce(V_AD, sumOp<scalar>());
 
 forAll(cellsDisc, c)
 {
-    //---Ud for the center cells
+    // dejo el cálculo de U_dCenterCells porque creo que se usa aguas abajo, pero todavia no se bien en qué y no quiero romper nada
     U_dCenterCells += U[cellsDisc[c]] * ( ( Vcells[cellsDisc[c]] * weightCellsADCenter[cellsDisc[c]] ) / Vcenter );
-    //---
 
-
-    //---Ud for all the cells
-    U_dCells += U[cellsDisc[c]] * ( ( Vcells[cellsDisc[c]] * weightCellsAD[cellsDisc[c]] ) / V_AD );
-    //---
+    if ( UdCenterToggle_ == 0 ){
+      U_dCells += U[cellsDisc[c]] * ( ( Vcells[cellsDisc[c]] * weightCellsAD[cellsDisc[c]] ) / V_AD );
+    } else if ( UdCenterToggle == 1 ){
+      U_dCells += U[cellsDisc[c]] * ( ( Vcells[cellsDisc[c]] * weightCellsADCenter[cellsDisc[c]] ) / Vcenter );
+    }
 }
+reduce(U_dCells, sumOp<vector>());
 
 // U_dCells += U_dCenterCells;
 reduce(U_dCenterCells, sumOp<vector>());
@@ -322,7 +322,6 @@ Info<< "U_dCenterCells not yawed: " << mag(U_dCenterCells) << endl;
 // 	U_dCells += U[cellsDisc[c]] * ( ( Vcells[cellsDisc[c]] * weightCellsAD[cellsDisc[c]] ) / V_AD );
 // }
 
-reduce(U_dCells, sumOp<vector>());
 Info<< "U_dCells not yawed: " << mag(U_dCells) << endl;
 
 
