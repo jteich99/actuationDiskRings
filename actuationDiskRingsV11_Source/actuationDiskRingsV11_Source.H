@@ -202,6 +202,9 @@ protected:
         //Nodes counter
         scalar total_nodes_counter_;
 
+        //ratio to consider in center of AD
+        scalar centerRatio_;
+
 	    //List of cell ID for each node
 	    List<label> nodeCellID_;
 
@@ -425,6 +428,12 @@ public:
             scalar diskArea() const
             {
                 return diskArea_;
+            }
+
+            //- ratio to consider in center of AD
+            scalar centerRatio() const
+            {
+                return centerRatio_;
             }
 
          // Add explicit and implicit contributions
