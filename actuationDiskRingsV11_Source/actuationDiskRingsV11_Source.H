@@ -209,7 +209,7 @@ protected:
         //  - 0 = sum directly values in cells in AD
         //  - 1 = weight with Gaussian in distance to AD plane
         //  - 2 = weight with Gaussian in distance to AD plane + distance to center of AD
-        scalar UdMethod_;
+        scalar UdCellsMethod_;
 
 	    //List of cell ID for each node
 	    List<label> nodeCellID_;
@@ -446,9 +446,9 @@ public:
             //  - 0 = sum directly values in cells in AD
             //  - 1 = weight with Gaussian in distance to AD plane
             //  - 2 = weight with Gaussian in distance to AD plane + distance to center of AD
-            scalar UdMethod() const
+            scalar UdCellsMethod() const
             {
-                return UdMethod_;
+                return UdCellsMethod_;
             }
 
          // Add explicit and implicit contributions

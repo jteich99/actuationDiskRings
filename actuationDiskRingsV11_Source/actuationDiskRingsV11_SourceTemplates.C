@@ -246,19 +246,19 @@ forAll(cellsDisc, c)
     scalar dSphere= mag(mesh().cellCentres()[cellsDisc[c]] - diskPoint_);
 
     //weight calculation
-    if (UdMethod_ = 0) {
+    if (UdCellsMethod_ == 0) {
       // sum directly values in cells in AD
       scalar weightADplane = 1;
       scalar weightSphereCenter = 1;
       scalar weightSphereAD = 1;
     }
-    else if (UdMethod_ = 1) {
+    else if (UdCellsMethod_ == 1) {
       // weight with Gaussian in distance to AD plane
       scalar weightADplane = (1 / (E * sqrt(M_PI))) * exp(-1 * pow( (d/E),2));
       scalar weightSphereCenter = 1;
       scalar weightSphereAD = 1;
     }
-    else if (UdMethod_ = 2) {
+    else if (UdCellsMethod_ == 2) {
       // weight with Gaussian in distance to AD plane + distance to center of AD
       scalar weightADplane = (1 / (E * sqrt(M_PI))) * exp(-1 * pow( (d/E),2));
       scalar weightSphereCenter = (1 / ( (centerRatio * maxR) * sqrt(M_PI))) * exp(-1 * pow( (dSphere/( centerRatio * maxR )),2));
