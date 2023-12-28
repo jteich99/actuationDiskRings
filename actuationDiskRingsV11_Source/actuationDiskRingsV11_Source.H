@@ -205,6 +205,12 @@ protected:
         //ratio to consider in center of AD
         scalar centerRatio_;
 
+        //method to measure Velocity Ud
+        //  - 0 = sum directly values in cells in AD
+        //  - 1 = weight with Gaussian in distance to AD plane
+        //  - 2 = weight with Gaussian in distance to AD plane + distance to center of AD
+        scalar UdMethod_;
+
 	    //List of cell ID for each node
 	    List<label> nodeCellID_;
 
@@ -434,6 +440,15 @@ public:
             scalar centerRatio() const
             {
                 return centerRatio_;
+            }
+
+            //- method to measure Ud
+            //  - 0 = sum directly values in cells in AD
+            //  - 1 = weight with Gaussian in distance to AD plane
+            //  - 2 = weight with Gaussian in distance to AD plane + distance to center of AD
+            scalar UdMethod() const
+            {
+                return UdMethod_;
             }
 
          // Add explicit and implicit contributions

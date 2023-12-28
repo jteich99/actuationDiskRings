@@ -246,25 +246,30 @@ forAll(cellsDisc, c)
     scalar dSphere= mag(mesh().cellCentres()[cellsDisc[c]] - diskPoint_);
 
     //weight calculation
-    scalar weightADplane = (1 / (E * sqrt(M_PI))) * exp(-1 * pow( (d/E),2));
-    scalar weightSphereCenter = (1 / ( (centerRatio * maxR) * sqrt(M_PI))) * exp(-1 * pow( (dSphere/( centerRatio * maxR )),2));
-    scalar weightSphereAD = (1 / ( maxR * sqrt(M_PI))) * exp(-1 * pow( (dSphere / maxR),2));
+    if (UdMethod_ = 0) {
+      // sum directly values in cells in AD
+      scalar weightADplane = 1;
+      scalar weightSphereCenter = 1;
+      scalar weightSphereAD = 1;
+    }
+    else if (UdMethod_ = 1) {
+      // weight with Gaussian in distance to AD plane
+      scalar weightADplane = (1 / (E * sqrt(M_PI))) * exp(-1 * pow( (d/E),2));
+      scalar weightSphereCenter = 1;
+      scalar weightSphereAD = 1;
+    }
+    else if (UdMethod_ = 2) {
+      // weight with Gaussian in distance to AD plane + distance to center of AD
+      scalar weightADplane = (1 / (E * sqrt(M_PI))) * exp(-1 * pow( (d/E),2));
+      scalar weightSphereCenter = (1 / ( (centerRatio * maxR) * sqrt(M_PI))) * exp(-1 * pow( (dSphere/( centerRatio * maxR )),2));
+      scalar weightSphereAD = (1 / ( maxR * sqrt(M_PI))) * exp(-1 * pow( (dSphere / maxR),2));
+    }
 
     //evaluate weight
     if (dSphere <= maxR)
     	{
-        // weighting with Gaussian only in distance from AD plane
-    		// weightCellsAD[cellsDisc[c]] = weightADplane;
-    		// weightCellsADCenter[cellsDisc[c]] = weightADplane;
-        
-        // weighting with Gaussian in distance from AD plane and distance from center of AD
     		weightCellsAD[cellsDisc[c]] = weightADplane * weightSphereAD;
     		weightCellsADCenter[cellsDisc[c]] = weightADplane * weightSphereCenter;
-
-        // no weighting --> all cells have weight = 1
-    		// weightCellsAD[cellsDisc[c]] = 1;
-    		// weightCellsADCenter[cellsDisc[c]] = 1;
-
     	}
     else
     	{
@@ -274,22 +279,11 @@ forAll(cellsDisc, c)
     //--- 
     
     //---volume of the center cells weighted
-    // applying weigth only for distance to AD plane
-		// if dSphere < (centerRatio * maxR))
-		// {
-		// 	Vcenter += Vcells[cellsDisc[c]]*weightCellsAD[cellsDisc[c]];
-		// }
-    
-    // applying weigth for distance to AD plane and distance to center
     Vcenter += Vcells[cellsDisc[c]] * weightCellsADCenter[cellsDisc[c]];
     //---
 
 
     //---volume of the AD cells weighted
-    // applying weigth only for distance to AD plane
-    // V_AD += Vcells[cellsDisc[c]] * weightCellsAD[cellsDisc[c]];
-
-    // applying weigth for distance to AD plane and distance to center
     V_AD += Vcells[cellsDisc[c]] * weightCellsAD[cellsDisc[c]];
     //---
 }
@@ -303,25 +297,12 @@ reduce(V_AD, sumOp<scalar>());
 forAll(cellsDisc, c)
 {
     //---Ud for the center cells
-    // applying weigth only for distance to AD plane
-		// if dSphere < (centerRatio * maxR))
-		// {
-		// 	U_dCenterCells += U[cellsDisc[c]] * ( ( Vcells[cellsDisc[c]] * weightCellsAD[cellsDisc[c]] ) / Vcenter );
-		// }
-  
-    // applying weigth for distance to AD plane and distance to center
     U_dCenterCells += U[cellsDisc[c]] * ( ( Vcells[cellsDisc[c]] * weightCellsADCenter[cellsDisc[c]] ) / Vcenter );
     //---
 
 
     //---Ud for all the cells
-    // applying weigth only for distance to AD plane
-    // U_dCells += U[cellsDisc[c]] * ( ( Vcells[cellsDisc[c]] * weightCellsAD[cellsDisc[c]] ) / V_AD );
-  
-    // applying weigth for distance to AD plane and distance to center
     U_dCells += U[cellsDisc[c]] * ( ( Vcells[cellsDisc[c]] * weightCellsAD[cellsDisc[c]] ) / V_AD );
-
-
     //---
 }
 
