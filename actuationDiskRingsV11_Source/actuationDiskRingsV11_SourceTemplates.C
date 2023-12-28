@@ -269,7 +269,12 @@ forAll(cellsDisc, c)
     if (dSphere <= maxR)
     	{
     		weightCellsAD[cellsDisc[c]] = weightADplane * weightSphereAD;
-    		weightCellsADCenter[cellsDisc[c]] = weightADplane * weightSphereCenter;
+        if ( dSphere <= centerRatio_ * maxR )
+        {
+    		  weightCellsADCenter[cellsDisc[c]] = weightADplane * weightSphereCenter;
+        } else {
+          weightCellsADCenter[cellsDisc[c]] = 0;
+        }
     	}
     else
     	{
