@@ -130,6 +130,7 @@ Foam::fv::actuationDiskRingsV11_Source::actuationDiskRingsV11_Source
     yaw_(readScalar(coeffs_.lookup("yaw"))),
     omega_(readScalar(coeffs_.lookup("omega",0.0))),
     diskArea_(readScalar(coeffs_.lookup("diskArea"))),
+    centerRatio_(readScalar(coeffs_.lookup("centerRatio"))),
 	diskPoint_(coeffs_.lookup("diskPoint")),
 	//rootFactor_(readScalar(coeffs_.lookup("rootFactor"))),
 	//tipFactor_(readScalar(coeffs_.lookup("tipFactor"))),

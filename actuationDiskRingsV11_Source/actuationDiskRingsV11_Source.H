@@ -202,6 +202,20 @@ protected:
         //Nodes counter
         scalar total_nodes_counter_;
 
+        //ratio to consider in center of AD
+        scalar centerRatio_;
+
+        //method to measure Velocity Ud
+        //  - 0 = sum directly values in cells in AD
+        //  - 1 = weight with Gaussian in distance to AD plane
+        //  - 2 = weight with Gaussian in distance to AD plane + distance to center of AD
+        scalar UdCellsMethod_;
+
+        //toggle for measuring Ud with center of AD
+        //  - 0 = use all of AD
+        //  - 1 = use center of AD with centerRatio
+        scalar UdCenterToggle_;
+
 	    //List of cell ID for each node
 	    List<label> nodeCellID_;
 
@@ -425,6 +439,29 @@ public:
             scalar diskArea() const
             {
                 return diskArea_;
+            }
+
+            //- method to measure Ud
+            //  - 0 = sum directly values in cells in AD
+            //  - 1 = weight with Gaussian in distance to AD plane
+            //  - 2 = weight with Gaussian in distance to AD plane + distance to center of AD
+            scalar UdCellsMethod() const
+            {
+                return UdCellsMethod_;
+            }
+            
+            //- toggle for measuring Ud with center of AD
+            //  - 0 = use all of AD
+            //  - 1 = use center of AD with centerRatio
+            scalar UdCenterToggle() const
+            {
+                return UdCenterToggle_;
+            }
+
+            //- ratio to consider in center of AD
+            scalar centerRatio() const
+            {
+                return centerRatio_;
             }
 
          // Add explicit and implicit contributions
