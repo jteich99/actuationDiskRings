@@ -494,6 +494,7 @@ Info << " " << endl;
 total_nodes_counter = 0;
 //for each ring
 
+// loop through rings and nodes for calculating forces and distributing them
 for (int ring =0; ring<=(numberRings_-1); ring=ring+1)
 //Not passing through the last ring to avoid errors with the center node
 {
