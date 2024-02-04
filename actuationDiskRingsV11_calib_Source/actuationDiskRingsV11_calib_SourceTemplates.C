@@ -144,42 +144,31 @@ void Foam::fv::actuationDiskRingsV11_calib_Source::addactuationDiskRingsV11_cali
     // calculate the radius
     scalar maxR = sqrt(diskArea_ / M_PI);
 
-    //--------------------line orientation------------------------------------------------
-    //-----Yaw rotation option
+//----- YAW ROTATION OPTION  -------------------------------------------------------------
     vector uniDiskDir = vector(0, 0, 0);
     scalar yawRad;
 
     if (yaw_ == 360)
     {
-        // Info<<"Because yaw = 360, no yaw restriction is applied, free orientation aviable"<< endl;
-
         // volume of the center cells of the sphere
         scalar Vcenter_orient = 0.0;
-
         forAll(cells, c)
         {
-
-            if (mag(mesh().cellCentres()[cells[c]] - diskPoint_) < (0.30 * maxR))
+            if (mag(mesh().cellCentres()[cells[c]] - diskPoint_) < (centerRation_ * maxR))
             {
                 Vcenter_orient += Vcells[cells[c]];
             }
         }
-
         reduce(Vcenter_orient, sumOp<scalar>());
-
-        // Calcula el volumen de las celdas del centro y a continuación la velocidad promedio
-        //  en estas celdas
 
         // Ud vector for the center cells of the sphere
         forAll(cells, c)
         {
-
-            if (mag(mesh().cellCentres()[cells[c]] - diskPoint_) < (0.30 * maxR))
+            if (mag(mesh().cellCentres()[cells[c]] - diskPoint_) < (centerRation_ * maxR))
             {
                 U_dCenterCells_orient += U[cells[c]] * (Vcells[cells[c]] / Vcenter_orient);
             }
         }
-
         reduce(U_dCenterCells_orient, sumOp<vector>());
 
         // no orientation z component
@@ -197,15 +186,11 @@ void Foam::fv::actuationDiskRingsV11_calib_Source::addactuationDiskRingsV11_cali
         float Alpha = acos(cosAlpha) * 180.0 / M_PI;
         // Info<< "angle between the AD vector and the inlet vector "<< Alpha << endl;
     }
-
-    // HASTA ACÁ HACEMOS TODA LA REORIENTACIÓN AUTOMATICA DEL AEROGENERADOR. LO DEJAMOS
-    //  COMO ESTÁ.
     else
     {
         // Info<<"Yaw specfication activated, uniDiskDir=diskYawed"<<endl;
         ////Info<< "yaw angle: " << yaw_ << endl;
         yawRad = yaw_ * 2 * M_PI / 360;
-
         // rotate the orginal diskDir with the yaw angle
         vector diskYawed = vector(diskDir_[0] * cos(yawRad) - diskDir_[1] * sin(yawRad), diskDir_[0] * sin(yawRad) + diskDir_[1] * cos(yawRad), diskDir_[2]);
         // Info << "new diskDir_ rotated with the yawed angle "<< diskYawed << endl;
@@ -216,8 +201,6 @@ void Foam::fv::actuationDiskRingsV11_calib_Source::addactuationDiskRingsV11_cali
     // calculate the component of Uinf for the yawed (or not) AD
     scalar cosUinfAngle = (diskDir_[0] * uniDiskDir[0] + diskDir_[1] * uniDiskDir[1]) / (mag(diskDir_) * mag(uniDiskDir));
     scalar UrefYaw = Uref_ * cosUinfAngle;
-    // ACA TENEMOS UN ERROR QUE SOLO SE VE CUANDO HACES SIMULACIONES CON EL YAW.
-    // Lo corregimos.
 
     // Info << "Uinf fixed (yawed): "<<UrefYaw<<endl;
 
@@ -386,19 +369,11 @@ void Foam::fv::actuationDiskRingsV11_calib_Source::addactuationDiskRingsV11_cali
         {
             tita_r = ringTitaList_[ring];
             rMed_r = ringrMedList_[ring];
-            // Info << "ring: "<< ring << endl;
-            // Info << "nodes in ring: "<< ringNodesList_[ring] << endl;
-            // Info << "tita_r: "<< tita_r << endl;
-            // Info << "rMed_r: "<< rMed_r << endl;
 
             // for each node
             for (int nodeIterator = 1; nodeIterator <= ringNodesList_[ring]; nodeIterator += 1)
             {
-
                 tita_n_Rad = 2 * M_PI * (tita_r * (nodeIterator - 1)) / 360;
-
-                // Info << "tita_n_Rad: "<< tita_n_Rad<< endl;
-                // Info << "yawRad: "<< yawRad<< endl;
 
                 // position of the node
                 scalar x_node = -1 * rMed_r * sin(tita_n_Rad) * sin(yawRad);
@@ -412,44 +387,26 @@ void Foam::fv::actuationDiskRingsV11_calib_Source::addactuationDiskRingsV11_cali
 
                 // blade vector
                 vector bladeDir = vector(x_node - diskPoint_[0], y_node - diskPoint_[1], z_node - diskPoint_[2]);
-
-                // Info << "bladeDir: "<<bladeDir<< endl;
-
                 vector bladeUniDir = bladeDir / mag(bladeDir);
 
-                // Info << "blade uni vector : "<< bladeUniDir<< endl;
-
                 // calculate the tangential vector
-                F_tita_dir = vector(uniDiskDir[1] * bladeUniDir[2] - uniDiskDir[2] * bladeUniDir[1], -1 * (uniDiskDir[0] * bladeUniDir[2] - uniDiskDir[2] * bladeUniDir[0]), uniDiskDir[0] * bladeUniDir[1] - uniDiskDir[1] * bladeUniDir[0]); // vector product in between vector normal to disk and vector in radial direction --> gives vector in tangential direction
-                // Info << "F_tita_dir is ok" << endl;
-
-                // Info << "F_tita_dir: "<<F_tita_dir<< endl;
-
-                F_tita_dir = F_tita_dir / mag(F_tita_dir); // normalize tangential vector
-                ////Info << "F_tita_dir" << F_tita_dir << endl;
+                F_tita_dir = vector(uniDiskDir[1] * bladeUniDir[2] - uniDiskDir[2] * bladeUniDir[1], -1 * (uniDiskDir[0] * bladeUniDir[2] - uniDiskDir[2] * bladeUniDir[0]), uniDiskDir[0] * bladeUniDir[1] - uniDiskDir[1] * bladeUniDir[0]); 
+                F_tita_dir = F_tita_dir / mag(F_tita_dir);
 
                 // calculate the tensor transformation of coordinates
                 vector_n = -1 * uniDiskDir;
                 vector_t = F_tita_dir;
                 vector_r = bladeUniDir;
-
-                // Info << "vector_n " << vector_n << endl;
-                // Info << "vector_t " << vector_t << endl;
-                // Info << "vector_r " << vector_r << endl;
-
-                tensor Transform(vector_n[0], vector_t[0], vector_r[0], vector_n[1], vector_t[1], vector_r[1], vector_n[2], vector_t[2], vector_r[2]); // tensor for base change to cylindrical coordinates
-                // Info << "tesnor Transform is ok" << endl;
-
+                tensor Transform(vector_n[0], vector_t[0], vector_r[0],
+                                 vector_n[1], vector_t[1], vector_r[1],
+                                 vector_n[2], vector_t[2], vector_r[2]); 
                 vector Bi = vector(x_node, y_node, z_node);
-                // Info << "Bi: "<< Bi << endl;
-
                 radius = mag(diskPoint_ - Bi);
-                // Info << "radius: "<< radius << endl;
 
                 // change of coordinate system
                 Bi_ntr = inv(Transform) & Bi;
-                // Info << "Bi_ntr: "<< Bi_ntr << endl;
 
+                // calculate velocity in node from velocity in cell
                 vector U_dPointCells = vector(1000, 1000, 1000);
                 if (nodeCellID_[total_nodes_counter] != -1) // if the closer cell is in this procesor
                 {
@@ -457,11 +414,11 @@ void Foam::fv::actuationDiskRingsV11_calib_Source::addactuationDiskRingsV11_cali
                     if (gradInterpolation_ == 1) // ?? condition
                     {
                         vector dx = Bi - mesh().cellCentres()[nodeCellID_[total_nodes_counter]];
-                        vector dU = dx & gradU[nodeCellID_[total_nodes_counter]]; // & = internal product of 2 vectors in OF --> scakar...
+                        vector dU = dx & gradU[nodeCellID_[total_nodes_counter]]; 
                         U_dPointCells += dU;
                     }
                 }
-                reduce(U_dPointCells, minOp<vector>()); // take only normal values of U
+                reduce(U_dPointCells, minOp<vector>()); 
 
                 if (mag(U_dPointCells) > 1000) // We add a flag in case it does not find a cell near
                 {
@@ -473,50 +430,47 @@ void Foam::fv::actuationDiskRingsV11_calib_Source::addactuationDiskRingsV11_cali
                 }
 
                 total_nodes_counter += 1;
-                // Info << "node: "<< total_nodes_counter << endl;
 
                 // change of coordinate system
-                U_dPointCells_ntr = inv(Transform) & U_dPointCells; // & = internal product of 2 vectors in OF
-
-                // velocities in the profile coordinates
+                U_dPointCells_ntr = inv(Transform) & U_dPointCells; 
                 U_n = -1 * U_dPointCells_ntr[0];
                 U_t = -1 * U_dPointCells_ntr[1];
 
                 // phi angle, always positive the bottom part
+                // PHI ANGLE CALCULATION -------------------------------------------------------------------------------
                 if (omega > 0)
                 {
                     phi = Foam::atan(U_n / (radius * omega - U_t));
                 }
-
                 if (((U_t - radius * omega) <= 0) and (U_n >= 0))
                 {
                     ////Info << "case 1) (U_t - radius*omega)(-) and U_z(+) (most common case)"  << endl;
                 }
-
                 if (((U_t - radius * omega) <= 0) and (U_n < 0))
                 {
                     ////Info << "case 3) (U_t - radius*omega)(-) and U_z(-)"  << endl;
                 }
-
                 if (((U_t - radius * omega) > 0) and (U_n >= 0))
                 {
                     ////Info << "case 2) (U_t - radius*omega)(+) and U_z(+)"  << endl;
                     phi = phi + M_PI;
                 }
-
                 if (((U_t - radius * omega) > 0) and (U_n < 0))
                 {
                     ////Info << "case 4) (U_t - radius*omega)(+) and U_z(-)"  << endl;
                     phi = phi - M_PI;
                 }
+                // PHI ANGLE CALCULATION END -------------------------------------------------------------------------------
 
                 // Info << "radius: "<<radius<<endl;
-                // Shen tip correction factor:
+                // TIP AND ROOT CORRECTION FACTORS ---------------------------------------------------------------
                 scalar fcorr = 0.0;
+
+                // TIP CORRECTION FACTORS ---------------------------------------------------------------
                 scalar tipfactor = 1;
                 scalar tipfactor_f = (nblades_ / 2) * (maxR - radius) / (radius * sin(phi));
 
-                if (tipFactor_ == 1) // If tip factor is on
+                if (tipFactor_ == 1) // tip factor proposed by Shen 2005
                 {
                     scalar c1 = 0.125;
                     scalar c2 = 27; // 27
@@ -533,7 +487,7 @@ void Foam::fv::actuationDiskRingsV11_calib_Source::addactuationDiskRingsV11_cali
                         }
                     }
                 }
-                else if (tipFactor_ == 2) // 2nd option for tip factor computation
+                else if (tipFactor_ == 2) // tip factor proposed by Prandtl 
                 {
                     Info << "calculating tipFactor" << endl;
                     scalar tipfactor_arg = exp(-(nblades_ * (1 - radius)) / (2 * radius * sin(phi)));
@@ -543,9 +497,10 @@ void Foam::fv::actuationDiskRingsV11_calib_Source::addactuationDiskRingsV11_cali
                     }
                 }
 
-                // Glauert root correction factor:
+                // ROOT CORRECTION FACTORS ---------------------------------------------------------------
+                scalar tipfactor = 1;
                 scalar rootfactor = 1;
-                if (rootFactor_ == 1) // If root factor is on
+                if (rootFactor_ == 1) // root factor proposed by Glauert
                 {
                     if (radius <= root)
                     {
@@ -563,7 +518,7 @@ void Foam::fv::actuationDiskRingsV11_calib_Source::addactuationDiskRingsV11_cali
                         }
                     }
                 }
-                else if (rootFactor_ == 2) // 2nd option for root factor
+                else if (rootFactor_ == 2) // root factor proposed in Sorensen 2020 
                 {
                     Info << "calculating rootFactor" << endl;
                     if (radius <= root)
@@ -580,6 +535,7 @@ void Foam::fv::actuationDiskRingsV11_calib_Source::addactuationDiskRingsV11_cali
 
                 // Info << "rootfactor: "<<rootfactor<<endl;
                 fcorr = tipfactor * rootfactor;
+                // END OF TIP AND ROOT FACTORS CALCULATION -------------------------------------------
 
                 //----FORCES CALCULATIONS-------------------
                 // for normal force distribution
@@ -595,7 +551,7 @@ void Foam::fv::actuationDiskRingsV11_calib_Source::addactuationDiskRingsV11_cali
         Info << "Calculating scale factor for central node" << endl;
         // Info << "ring: "<< numberRings_ << endl;
         // Info << "node: "<< nodesNumber_ << endl;
-        // Calculation for de central node
+        // Calculation for de centrl node
         sumF_n_Bi += fn * ringAreaList_[numberRings_];
         // We only add normal force, not tangential
         // The fcorr is zero, that's why we don't add to sumF_n_Bixfactor
@@ -614,9 +570,15 @@ void Foam::fv::actuationDiskRingsV11_calib_Source::addactuationDiskRingsV11_cali
     Info << "Starting loop for force calculation" << endl;
     Info << " " << endl;
     total_nodes_counter = 0;
+
     // for each ring
-    for (int ring = 0; ring <= (numberRings_ - 1); ring = ring + 1)
+
+    //--- LOOP OVER RINGS FOR FORCE CALCULATION AND DISTTIBUTION -----------------------------------------------------------------
+    // for (int ring = 0; ring <= (numberRings_ - 1); ring = ring + 1)
     // Not passing through the last ring to avoid errors with the center node
+    for (int ring = 0; ring <= (numberRings_); ring = ring + 1)
+    // Pass through last ring (center node)
+    // FALTA COMENTAR Y DESPS ELIMINAR LA PARTE EN LA QUE HACE SOLO EL NODO DEL CENTRO
     {
         tita_r = ringTitaList_[ring];
         rMed_r = ringrMedList_[ring];
@@ -625,14 +587,28 @@ void Foam::fv::actuationDiskRingsV11_calib_Source::addactuationDiskRingsV11_cali
         // Info << "rMed_r: "<< rMed_r << endl;
 
         // for each node
+        // -- LOOP OVER NODES IN RING FOR FORCE CALCULATION AND DISTRBUTION -------------------------------------------------
         for (int nodeIterator = 1; nodeIterator <= ringNodesList_[ring]; nodeIterator += 1)
         {
             tita_n_Rad = 2 * M_PI * (tita_r * (nodeIterator - 1)) / 360;
 
-            // position of the node
-            scalar x_node = -1 * rMed_r * sin(tita_n_Rad) * sin(yawRad);
-            scalar y_node = rMed_r * sin(tita_n_Rad) * cos(yawRad);
-            scalar z_node = rMed_r * cos(tita_n_Rad);
+            scalar x_node = 0;
+            scalar y_node = 0;
+            scalar z_node = 0;
+
+            // position of the node considering disk center = (0,0,0)
+            if (ring == numberRings_)
+            {
+                scalar x_node = 0;
+                scalar y_node = 0;
+                scalar z_node = 0;
+            }
+            else
+            {
+                scalar x_node = -1 * rMed_r * sin(tita_n_Rad) * sin(yawRad);
+                scalar y_node = rMed_r * sin(tita_n_Rad) * cos(yawRad);
+                scalar z_node = rMed_r * cos(tita_n_Rad);
+            }
 
             // move to turbine position
             x_node = x_node + diskPoint_[0];
@@ -640,8 +616,16 @@ void Foam::fv::actuationDiskRingsV11_calib_Source::addactuationDiskRingsV11_cali
             z_node = z_node + diskPoint_[2];
 
             // blade vector
-            vector bladeDir = vector(x_node - diskPoint_[0], y_node - diskPoint_[1], z_node - diskPoint_[2]);
-            vector bladeUniDir = bladeDir / mag(bladeDir);
+            vector bladeUniDir = vector(0, 0, 1); // we force this vector for the center node
+            if (ring == numberRings_)
+            {
+                vector bladeUniDir = vector(0, 0, 1); // we force this vector for the center node
+            }
+            else
+            {
+                vector bladeDir = vector(x_node - diskPoint_[0], y_node - diskPoint_[1], z_node - diskPoint_[2]);
+                vector bladeUniDir = bladeDir / mag(bladeDir);
+            }
             ////Info << "blade uni vector : "<< bladeUniDir<< endl;
 
             // calculate the tangential vector
@@ -788,17 +772,20 @@ void Foam::fv::actuationDiskRingsV11_calib_Source::addactuationDiskRingsV11_cali
             reduce(V_point_F, sumOp<scalar>());
 
             // Info << "radius: "<<radius<<endl;
-            // Shen tip correction factor:
+            // TIP AND ROOT CORRECTION FACTORS ---------------------------------------------------------------
             scalar fcorr = 0.0;
+
+            // TIP CORRECTION FACTORS ---------------------------------------------------------------
             scalar tipfactor = 1;
             scalar tipfactor_f = (nblades_ / 2) * (maxR - radius) / (radius * sin(phi));
-            if (tipFactor_ == 1) // If tip factor is on
+
+            if (tipFactor_ == 1) // tip factor proposed by Shen 2005
             {
                 scalar c1 = 0.125;
                 scalar c2 = 27; // 27
                 scalar c3 = 0.1;
                 scalar g = 1;
-                // scalar tipfactor_f = (nblades_/2)*(maxR - radius)/(radius*sin(phi));
+                // scalar tipfactor_f = (nblades_/2)*(maxR - radius)/(radius*sin(phi)); Movemos antes del if
                 // Info << "tipfactor_f " << tipfactor_f << endl;
                 g = exp(-c1 * (nblades_ * tsr - c2)) + c3;
                 if (tipfactor_f > 0)
@@ -809,8 +796,9 @@ void Foam::fv::actuationDiskRingsV11_calib_Source::addactuationDiskRingsV11_cali
                     }
                 }
             }
-            else if (tipFactor_ == 2) // 2nd option for tip factor computation
+            else if (tipFactor_ == 2) // tip factor proposed by Prandtl 
             {
+                Info << "calculating tipFactor" << endl;
                 scalar tipfactor_arg = exp(-(nblades_ * (1 - radius)) / (2 * radius * sin(phi)));
                 if ((tipfactor_arg > -1) and (tipfactor_arg < 1))
                 {
@@ -818,10 +806,10 @@ void Foam::fv::actuationDiskRingsV11_calib_Source::addactuationDiskRingsV11_cali
                 }
             }
 
-            // Info << "tipfactor: "<<tipfactor<<endl;
-            // Glauert root correction factor:
+            // ROOT CORRECTION FACTORS ---------------------------------------------------------------
+            scalar tipfactor = 1;
             scalar rootfactor = 1;
-            if (rootFactor_ == 1) // If root factor is on
+            if (rootFactor_ == 1) // root factor proposed by Glauert
             {
                 if (radius <= root)
                 {
@@ -839,13 +827,13 @@ void Foam::fv::actuationDiskRingsV11_calib_Source::addactuationDiskRingsV11_cali
                     }
                 }
             }
-            else if (rootFactor_ == 2) // 2nd option for root factor
+            else if (rootFactor_ == 2) // root factor proposed in Sorensen 2020 
             {
+                Info << "calculating rootFactor" << endl;
                 if (radius <= root)
                 {
                     rootfactor = 0;
                 }
-
                 if ((radius > root) and (radius < maxR / 2.0))
                 {
                     scalar constantA = 2.335;
@@ -856,7 +844,7 @@ void Foam::fv::actuationDiskRingsV11_calib_Source::addactuationDiskRingsV11_cali
 
             // Info << "rootfactor: "<<rootfactor<<endl;
             fcorr = tipfactor * rootfactor;
-            // Info << "fcorr: "<<fcorr<<endl;
+            // END OF TIP AND ROOT FACTORS CALCULATION -------------------------------------------
 
             // Tangential and axial forces
             // multiply the force by the corresponding area
