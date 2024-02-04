@@ -124,7 +124,7 @@ void Foam::fv::actuationDiskRingsV11_Source::addactuationDiskRings_AxialInertial
         scalar Vcenter_orient = 0.0;
         forAll(cells, c)
         {
-            if (mag(mesh().cellCentres()[cells[c]] - diskPoint_) < (centerRation_ * maxR))
+            if (mag(mesh().cellCentres()[cells[c]] - diskPoint_) < (centerRatio_ * maxR))
             {
                 Vcenter_orient += Vcells[cells[c]];
             }
@@ -625,7 +625,7 @@ void Foam::fv::actuationDiskRingsV11_Source::addactuationDiskRings_AxialInertial
                 }
                 else if (forceDistributionMethod_==2) { // force distribution as proposed in Mikkelsen 2003
                     weightCells[cellsDisc[c]] = (1 / (pow(E, 3) * pow(sqrt(M_PI), 3))) *
-                                            exp(-1 * ( (sqrt(pow(dn,2) + pow(dr,2) + pow(dt,2))) / (E) ) ));
+                                            exp(-1 * ( (sqrt(pow(dn,2) + pow(dr,2) + pow(dt,2))) / (E) ) );
                 }
 
                 // distance of the cell center from sphere

@@ -144,6 +144,8 @@ void Foam::fv::actuationDiskRingsV11_calib_Source::addactuationDiskRingsV11_cali
     // calculate the radius
     scalar maxR = sqrt(diskArea_ / M_PI);
 
+    scalar tipfactor;
+
 //----- YAW ROTATION OPTION  -------------------------------------------------------------
     vector uniDiskDir = vector(0, 0, 0);
     scalar yawRad;
@@ -154,7 +156,7 @@ void Foam::fv::actuationDiskRingsV11_calib_Source::addactuationDiskRingsV11_cali
         scalar Vcenter_orient = 0.0;
         forAll(cells, c)
         {
-            if (mag(mesh().cellCentres()[cells[c]] - diskPoint_) < (centerRation_ * maxR))
+            if (mag(mesh().cellCentres()[cells[c]] - diskPoint_) < (centerRatio_ * maxR))
             {
                 Vcenter_orient += Vcells[cells[c]];
             }
@@ -164,7 +166,7 @@ void Foam::fv::actuationDiskRingsV11_calib_Source::addactuationDiskRingsV11_cali
         // Ud vector for the center cells of the sphere
         forAll(cells, c)
         {
-            if (mag(mesh().cellCentres()[cells[c]] - diskPoint_) < (centerRation_ * maxR))
+            if (mag(mesh().cellCentres()[cells[c]] - diskPoint_) < (centerRatio_ * maxR))
             {
                 U_dCenterCells_orient += U[cells[c]] * (Vcells[cells[c]] / Vcenter_orient);
             }
@@ -467,7 +469,7 @@ void Foam::fv::actuationDiskRingsV11_calib_Source::addactuationDiskRingsV11_cali
                 scalar fcorr = 0.0;
 
                 // TIP CORRECTION FACTORS ---------------------------------------------------------------
-                scalar tipfactor = 1;
+                tipfactor = 1;
                 scalar tipfactor_f = (nblades_ / 2) * (maxR - radius) / (radius * sin(phi));
 
                 if (tipFactor_ == 1) // tip factor proposed by Shen 2005
@@ -498,7 +500,7 @@ void Foam::fv::actuationDiskRingsV11_calib_Source::addactuationDiskRingsV11_cali
                 }
 
                 // ROOT CORRECTION FACTORS ---------------------------------------------------------------
-                scalar tipfactor = 1;
+                tipfactor = 1;
                 scalar rootfactor = 1;
                 if (rootFactor_ == 1) // root factor proposed by Glauert
                 {
@@ -749,7 +751,7 @@ void Foam::fv::actuationDiskRingsV11_calib_Source::addactuationDiskRingsV11_cali
                 }
                 else if (forceDistributionMethod_==2) { // force distribution as proposed in Mikkelsen 2003
                     weightCells[cellsDisc[c]] = (1 / (pow(E, 3) * pow(sqrt(M_PI), 3))) *
-                                            exp(-1 * ( (sqrt(pow(dn,2) + pow(dr,2) + pow(dt,2))) / (E) ) ));
+                                            exp(-1 * ( (sqrt(pow(dn,2) + pow(dr,2) + pow(dt,2))) / (E) ) );
                 }
 
                 // distance of the cell center from sphere
@@ -776,7 +778,7 @@ void Foam::fv::actuationDiskRingsV11_calib_Source::addactuationDiskRingsV11_cali
             scalar fcorr = 0.0;
 
             // TIP CORRECTION FACTORS ---------------------------------------------------------------
-            scalar tipfactor = 1;
+            tipfactor = 1;
             scalar tipfactor_f = (nblades_ / 2) * (maxR - radius) / (radius * sin(phi));
 
             if (tipFactor_ == 1) // tip factor proposed by Shen 2005
@@ -807,7 +809,7 @@ void Foam::fv::actuationDiskRingsV11_calib_Source::addactuationDiskRingsV11_cali
             }
 
             // ROOT CORRECTION FACTORS ---------------------------------------------------------------
-            scalar tipfactor = 1;
+            tipfactor = 1;
             scalar rootfactor = 1;
             if (rootFactor_ == 1) // root factor proposed by Glauert
             {
@@ -1013,7 +1015,7 @@ void Foam::fv::actuationDiskRingsV11_calib_Source::addactuationDiskRingsV11_cali
     // Info << "radius: "<<radius<<endl;
     // Shen tip correction factor:
     scalar fcorr = 0.0;
-    scalar tipfactor = 1;
+    tipfactor = 1;
 
     // Info << "tipfactor: "<<tipfactor<<endl;
     // Glauert root correction factor:

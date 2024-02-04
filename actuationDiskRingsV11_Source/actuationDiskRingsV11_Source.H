@@ -214,6 +214,8 @@ namespace Foam
             //   - 1 = use center of AD with centerRatio
             scalar UdCenterToggle_;
 
+            scalar forceDistributionMethod_;
+
             // List of cell ID for each node
             List<label> nodeCellID_;
 
