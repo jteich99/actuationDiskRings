@@ -750,9 +750,23 @@ void Foam::fv::actuationDiskRingsV11_calib_Source::addactuationDiskRingsV11_cali
                 dr = mag(Pi_ntr[2] - Bi_ntr[2]);
 
                 //---for forces
-                // calculate the wight dependig on the distances from the sectional point
-                weightCells[cellsDisc[c]] = (1 / (En * Et * Er * pow(sqrt(M_PI), 3))) *
+                // calculate the weight dependig on the distances from the sectional point
+                // very similar to convolution distribution form Mikkelsen PhD thesis in 2003
+                // difference that here it decomposes in the directions.That part inside the exponential isn't exactly the same as in Mikkelsen proposal
+                if (forceDistributionMethod_==0) { // no force distribution. Forces are applied directly in cell that contains the node
+                    // FINISH THIS PART
+                    // !!!!!!
+                    // !!!!!!
+                    // !!!!!!
+                }
+                else if (forceDistributionMethod_==1) { // force distribution previously implented in this code
+                    weightCells[cellsDisc[c]] = (1 / (En * Et * Er * pow(sqrt(M_PI), 3))) *
                                             exp(-1 * (pow(dn / En, 2) + pow(dt / Et, 2) + pow(dr / Er, 2)));
+                }
+                else if (forceDistributionMethod_==2) { // force distribution as proposed in Mikkelsen 2003
+                    weightCells[cellsDisc[c]] = (1 / (pow(E, 3) * pow(sqrt(M_PI), 3))) *
+                                            exp(-1 * ( (sqrt(pow(dn,2) + pow(dr,2) + pow(dt,2))) / (E) ) ));
+                }
 
                 // distance of the cell center from sphere
                 scalar dSphere = mag(mesh().cellCentres()[cellsDisc[c]] - diskPoint_);
