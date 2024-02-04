@@ -482,9 +482,12 @@ void Foam::fv::actuationDiskRingsV11_Source::addactuationDiskRings_AxialInertial
     total_nodes_counter = 0;
     // for each ring
 
+//--- LOOP OVER RINGS FOR FORCE CALCULATION AND DISTTIBUTION -----------------------------------------------------------------
     // loop through rings and nodes for calculating forces and distributing them
-    for (int ring = 0; ring <= (numberRings_ - 1); ring = ring + 1)
+    // for (int ring = 0; ring <= (numberRings_ - 1); ring = ring + 1)
     // Not passing through the last ring to avoid errors with the center node
+    for (int ring = 0; ring <= (numberRings_); ring = ring + 1)
+    // Pass through last ring (center node)
     {
         tita_r = ringTitaList_[ring];
         rMed_r = ringrMedList_[ring];
@@ -493,14 +496,22 @@ void Foam::fv::actuationDiskRingsV11_Source::addactuationDiskRings_AxialInertial
         // Info << "rMed_r: "<< rMed_r << endl;
 
         // for each node
+        // -- LOOP OVER NODES IN RING FOR FORCE CALCULATION AND DISTRBUTION -------------------------------------------------
         for (int nodeIterator = 1; nodeIterator <= ringNodesList_[ring]; nodeIterator += 1)
         {
             tita_n_Rad = 2 * M_PI * (tita_r * (nodeIterator - 1)) / 360;
 
-            // position of the node
-            scalar x_node = -1 * rMed_r * sin(tita_n_Rad) * sin(yawRad);
-            scalar y_node = rMed_r * sin(tita_n_Rad) * cos(yawRad);
-            scalar z_node = rMed_r * cos(tita_n_Rad);
+			// position of the node considering disk center = (0,0,0)
+            if ( ring == numberRings_)
+            {
+                scalar x_node = 0; 
+                scalar y_node = 0; 
+                scalar z_node = 0; 
+            } else {
+                scalar x_node = -1 * rMed_r * sin(tita_n_Rad) * sin(yawRad);
+                scalar y_node = rMed_r * sin(tita_n_Rad) * cos(yawRad);
+                scalar z_node = rMed_r * cos(tita_n_Rad);
+            }
 
             // move to turbine position
             x_node = x_node + diskPoint_[0];
@@ -508,8 +519,13 @@ void Foam::fv::actuationDiskRingsV11_Source::addactuationDiskRings_AxialInertial
             z_node = z_node + diskPoint_[2];
 
             // blade vector
-            vector bladeDir = vector(x_node - diskPoint_[0], y_node - diskPoint_[1], z_node - diskPoint_[2]);
-            vector bladeUniDir = bladeDir / mag(bladeDir);
+            if ( ring == numberRings_)
+            {
+                vector bladeUniDir = vector(0, 0, 1); // we force this vector for the center node
+            } else {
+                vector bladeDir = vector(x_node - diskPoint_[0], y_node - diskPoint_[1], z_node - diskPoint_[2]);
+                vector bladeUniDir = bladeDir / mag(bladeDir);
+            }
             ////Info << "blade uni vector : "<< bladeUniDir<< endl;
 
             // calculate the tangential vector
@@ -543,6 +559,8 @@ void Foam::fv::actuationDiskRingsV11_Source::addactuationDiskRings_AxialInertial
             // change of coordinate system
             Bi_ntr = inv(Transform) & Bi;
 
+            // calculate velocity in node
+            // esto no esta hecho exactamente igual para el nodo del centro, pero no veo porque no funcionario de la forma que funca para todos los nodos. Lo dejo como esta aca y si crashea hago otro condicional segun el nro de nodo para copiar como esta despues
             vector U_dPointCells = vector(1000, 1000, 1000);
             if (nodeCellID_[total_nodes_counter] != -1) // if the closer cell is in this procesor
             {
@@ -583,15 +601,18 @@ void Foam::fv::actuationDiskRingsV11_Source::addactuationDiskRings_AxialInertial
             forAll(cellsDisc, c)
             {
                 // change of coordinate system
+                // Pi_ntr = coordinate of cell in cylindrical cooridnate system
                 Pi_ntr = inv(Transform) & mesh().cellCentres()[cellsDisc[c]];
 
-                // calculate the distances in blade coordinate system
+                // calculate the distances from node to cell center in blade coordinate system
                 dn = mag(Pi_ntr[0] - Bi_ntr[0]);
                 dt = mag(Pi_ntr[1] - Bi_ntr[1]);
                 dr = mag(Pi_ntr[2] - Bi_ntr[2]);
 
                 //---for forces
                 // calculate the wight dependig on the distances from the sectional point
+                // very similar to convolution distribution form Mikkelsen PhD thesis in 2003
+                // difference that here it decomposes in the directions.That part inside the exponential isn't exactly the same as in Mikkelsen proposal
                 weightCells[cellsDisc[c]] = (1 / (En * Et * Er * pow(sqrt(M_PI), 3))) *
                                             exp(-1 * (pow(dn / En, 2) + pow(dt / Et, 2) + pow(dr / Er, 2)));
 
@@ -614,7 +635,7 @@ void Foam::fv::actuationDiskRingsV11_Source::addactuationDiskRings_AxialInertial
             // volume weighted
             reduce(V_point_F, sumOp<scalar>());
 
-            //----FORCES INTERPOLATION-------------------
+            //----FORCES INTERPOLATION AND CALCUATION-------------------
 
             // search for the most proximate radius in table
 
@@ -643,15 +664,18 @@ void Foam::fv::actuationDiskRingsV11_Source::addactuationDiskRings_AxialInertial
             // Info<<"Using UrefList_[pos1]" << endl;
             for (int i = 0; i < (Uref2List_.size() - 1); i = i + 1)
             {
-                if ((Uref2List_[i] == UrefList_[pos1]) and (rList_[i] == rtable) and (fabs(mag(U_dPointCells_ntr) - UdiList_[i]) < difference) && ((mag(U_dPointCells_ntr) - UdiList_[i]) >= 0))
+                if (
+                    (Uref2List_[i] == UrefList_[pos1]) and 
+                    (rList_[i] == rtable) and 
+                    (fabs(mag(U_dPointCells_ntr) - UdiList_[i]) < difference) && 
+                    ((mag(U_dPointCells_ntr) - UdiList_[i]) >= 0)
+                ) // look into calibration table 2 (Udi_table) for the Uref value, and search for the Udi closest to the Udi of the node
                 {
                     // Info<< "Uref2List_[i]: " << Uref2List_[i] << endl;
                     // Info<< "rList_[i]: " << rList_[i] << endl;
                     // Info<< "UdiList_[i]: " << UdiList_[i] << endl;
-
                     difference = fabs(mag(U_dPointCells_ntr) - UdiList_[i]);
                     // Info<< "difference " << difference << endl;
-
                     pos = i; // the position of the lower value
                 }
 
@@ -668,6 +692,7 @@ void Foam::fv::actuationDiskRingsV11_Source::addactuationDiskRings_AxialInertial
                 pos = lastPos;
             }
 
+            // from the Udi founbd iun the table, calculate the nforces by interpolating with the other column values of the list
             U_inf1 = ((mag(U_dPointCells_ntr) - UdiList_[pos]) * ((UinfList_[pos + nR_]) - (UinfList_[pos])) / (UdiList_[pos + nR_] - UdiList_[pos])) + (UinfList_[pos]);
             fn1 = ((mag(U_dPointCells_ntr) - UdiList_[pos]) * ((fnList_[pos + nR_]) - (fnList_[pos])) / (UdiList_[pos + nR_] - UdiList_[pos])) + (fnList_[pos]);
             ft1 = ((mag(U_dPointCells_ntr) - UdiList_[pos]) * ((ftList_[pos + nR_]) - (ftList_[pos])) / (UdiList_[pos + nR_] - UdiList_[pos])) + (ftList_[pos]);
@@ -682,6 +707,7 @@ void Foam::fv::actuationDiskRingsV11_Source::addactuationDiskRings_AxialInertial
             // Info<<"Using UrefList_[pos2]" << UrefList_[pos2]<< endl;
             for (int i = 0; i < (Uref2List_.size() - 1); i = i + 1)
             {
+                // IDEM FOR WHAT WAS DONE WITH POSITION 1 OF TABLE
                 if ((Uref2List_[i] == UrefList_[pos2]) and (rList_[i] == rtable) and (fabs(mag(U_dPointCells_ntr) - UdiList_[i]) < difference) && ((mag(U_dPointCells_ntr) - UdiList_[i]) >= 0))
                 {
 
@@ -715,7 +741,7 @@ void Foam::fv::actuationDiskRingsV11_Source::addactuationDiskRings_AxialInertial
             // Info<< "fn2 : " << fn2  << endl;
             // Info<< "ft2 : " << ft2  << endl;
 
-            // interpolate U_inf_point
+            // interpolate U_inf_point from values obtained from position 1 and 2
             U_inf_point = ((UrefYaw - UrefList_[pos1]) * ((U_inf2) - (U_inf1)) / (UrefList_[pos2] - UrefList_[pos1])) + (U_inf1);
             fn_point = ((UrefYaw - UrefList_[pos1]) * ((fn2) - (fn1)) / (UrefList_[pos2] - UrefList_[pos1])) + (fn1);
             ft_point = ((UrefYaw - UrefList_[pos1]) * ((ft2) - (ft1)) / (UrefList_[pos2] - UrefList_[pos1])) + (ft1);
@@ -750,6 +776,7 @@ void Foam::fv::actuationDiskRingsV11_Source::addactuationDiskRings_AxialInertial
 
             // Info<< "-----FORCES finished ----- " << endl;
 
+            // --- FORCE DISTRIBUTION IN CELLS ----------------------------------------------------------------------------------------------
             // loop over all the cells to apply source
             forAll(cellsDisc, c)
             {
@@ -774,261 +801,268 @@ void Foam::fv::actuationDiskRingsV11_Source::addactuationDiskRings_AxialInertial
             } // close loop cells in sectional point
 
         } // close loop in ring
+        //---- END OF LOOP THROUGH NODES IN RING TO CALCULATE AND DISTRIBUTE FORCES ----------------
 
     } // close loop rings
+    //---- END OF LOOP THROUGH RINGS TO CALCULATE AND DISTRIBUTE FORCES ----------------
 
     Info << "Interpolation in the center node" << endl;
     Info << " " << endl;
 
+	//---- CALCULATION AND DISTRIBUTION OF FORCES FOR CENTER NODE ------------------------------------
+    // SAME AS WITH ALL NODES BUT FOR CENTER NODE
+    // no se porque no se podría hacer en el loop para dejar más prolijo el código. Revisasr
+    //
     // Calculate for center node
     // Info << "ring: "<< numberRings_ << endl;
     // Info << "node: "<< nodesNumber_ << endl;
 
     // move to turbine position
-    scalar x_node = diskPoint_[0];
-    scalar y_node = diskPoint_[1];
-    scalar z_node = diskPoint_[2];
+    // scalar x_node = diskPoint_[0];
+    // scalar y_node = diskPoint_[1];
+    // scalar z_node = diskPoint_[2];
 
-    // blade vector
-    vector bladeUniDir = vector(0, 0, 1); // we force this vector for the center node
-    ////Info << "blade uni vector : "<< bladeUniDir<< endl;
+    // // blade vector
+    // vector bladeUniDir = vector(0, 0, 1); // we force this vector for the center node
+    // ////Info << "blade uni vector : "<< bladeUniDir<< endl;
 
-    // calculate the tangential vector
-    F_tita_dir = vector(uniDiskDir[1] * bladeUniDir[2] - uniDiskDir[2] * bladeUniDir[1],
-                        -1 * (uniDiskDir[0] * bladeUniDir[2] - uniDiskDir[2] * bladeUniDir[0]),
-                        uniDiskDir[0] * bladeUniDir[1] - uniDiskDir[1] * bladeUniDir[0]);
+    // // calculate the tangential vector
+    // F_tita_dir = vector(uniDiskDir[1] * bladeUniDir[2] - uniDiskDir[2] * bladeUniDir[1],
+    //                     -1 * (uniDiskDir[0] * bladeUniDir[2] - uniDiskDir[2] * bladeUniDir[0]),
+    //                     uniDiskDir[0] * bladeUniDir[1] - uniDiskDir[1] * bladeUniDir[0]);
 
-    F_tita_dir = F_tita_dir / mag(F_tita_dir);
-    ////Info << "F_tita_dir" << F_tita_dir << endl;
+    // F_tita_dir = F_tita_dir / mag(F_tita_dir);
+    // ////Info << "F_tita_dir" << F_tita_dir << endl;
 
-    // calculate the tensor transformation of coordinates
-    vector_n = -1 * uniDiskDir;
-    vector_t = F_tita_dir;
-    vector_r = bladeUniDir;
+    // // calculate the tensor transformation of coordinates
+    // vector_n = -1 * uniDiskDir;
+    // vector_t = F_tita_dir;
+    // vector_r = bladeUniDir;
 
-    ////Info << "vector_n " << vector_n << endl;
-    ////Info << "vector_t " << vector_t << endl;
-    ////Info << "vector_r " << vector_r << endl;
+    // ////Info << "vector_n " << vector_n << endl;
+    // ////Info << "vector_t " << vector_t << endl;
+    // ////Info << "vector_r " << vector_r << endl;
 
-    tensor Transform(vector_n[0], vector_t[0], vector_r[0],
-                     vector_n[1], vector_t[1], vector_r[1],
-                     vector_n[2], vector_t[2], vector_r[2]);
+    // tensor Transform(vector_n[0], vector_t[0], vector_r[0],
+    //                  vector_n[1], vector_t[1], vector_r[1],
+    //                  vector_n[2], vector_t[2], vector_r[2]);
 
-    vector Bi = vector(x_node, y_node, z_node);
+    // vector Bi = vector(x_node, y_node, z_node);
 
-    radius = mag(diskPoint_ - Bi);
+    // radius = mag(diskPoint_ - Bi);
 
-    // save for the output
-    posList.append(radius);
+    // // save for the output
+    // posList.append(radius);
 
-    // change of coordinate system
-    Bi_ntr = inv(Transform) & Bi;
+    // // change of coordinate system
+    // Bi_ntr = inv(Transform) & Bi;
 
-    vector U_dPointCells = vector(1000, 1000, 1000);
-    if (nodeCellID_[nodesNumber_ - 1] != -1) // if the closer cell is in this procesor
-    {
-        U_dPointCells = U[nodeCellID_[nodesNumber_ - 1]];
-    }
-    reduce(U_dPointCells, minOp<vector>()); // take only normal values of U
+    // vector U_dPointCells = vector(1000, 1000, 1000);
+    // if (nodeCellID_[nodesNumber_ - 1] != -1) // if the closer cell is in this procesor
+    // {
+    //     U_dPointCells = U[nodeCellID_[nodesNumber_ - 1]];
+    // }
+    // reduce(U_dPointCells, minOp<vector>()); // take only normal values of U
 
-    if (mag(U_dPointCells) > 1000) // We add a flag in case it does not find a cell near
-    {
-        U_dPointCells = vector(10, 0, 0);
-        Info << "OpenFOAM cell Not found" << endl;
-        Info << "ring: " << numberRings_ << endl;
-        Info << "node: " << nodesNumber_ << endl;
-        Info << "radius: " << radius << endl;
-    }
+    // if (mag(U_dPointCells) > 1000) // We add a flag in case it does not find a cell near
+    // {
+    //     U_dPointCells = vector(10, 0, 0);
+    //     Info << "OpenFOAM cell Not found" << endl;
+    //     Info << "ring: " << numberRings_ << endl;
+    //     Info << "node: " << nodesNumber_ << endl;
+    //     Info << "radius: " << radius << endl;
+    // }
 
-    // change of coordinate system
-    U_dPointCells_ntr = inv(Transform) & U_dPointCells;
+    // // change of coordinate system
+    // U_dPointCells_ntr = inv(Transform) & U_dPointCells;
 
-    // velocities in the profile coordinates
-    U_n = -1 * U_dPointCells_ntr[0];
-    U_t = -1 * U_dPointCells_ntr[1];
+    // // velocities in the profile coordinates
+    // U_n = -1 * U_dPointCells_ntr[0];
+    // U_t = -1 * U_dPointCells_ntr[1];
 
-    // volume of the point cells weighted, for forces
-    V_point_F = 0;
+    // // volume of the point cells weighted, for forces
+    // V_point_F = 0;
 
-    // loop over all the cells to weight for FORCES
-    forAll(cellsDisc, c)
-    {
-        // change of coordinate system
-        Pi_ntr = inv(Transform) & mesh().cellCentres()[cellsDisc[c]];
+    // // loop over all the cells to weight for FORCES
+    // forAll(cellsDisc, c)
+    // {
+    //     // change of coordinate system
+    //     Pi_ntr = inv(Transform) & mesh().cellCentres()[cellsDisc[c]];
 
-        // calculate the distances in blade coordinate system
-        dn = mag(Pi_ntr[0] - Bi_ntr[0]);
-        dt = mag(Pi_ntr[1] - Bi_ntr[1]);
-        dr = mag(Pi_ntr[2] - Bi_ntr[2]);
+    //     // calculate the distances in blade coordinate system
+    //     dn = mag(Pi_ntr[0] - Bi_ntr[0]);
+    //     dt = mag(Pi_ntr[1] - Bi_ntr[1]);
+    //     dr = mag(Pi_ntr[2] - Bi_ntr[2]);
 
-        //---for forces
-        // calculate the wight dependig on the distances from the sectional point
-        weightCells[cellsDisc[c]] = (1 / (En * Et * Er * pow(sqrt(M_PI), 3))) *
-                                    exp(-1 * (pow(dn / En, 2) + pow(dt / Et, 2) + pow(dr / Er, 2)));
+    //     //---for forces
+    //     // calculate the wight dependig on the distances from the sectional point
+    //     weightCells[cellsDisc[c]] = (1 / (En * Et * Er * pow(sqrt(M_PI), 3))) *
+    //                                 exp(-1 * (pow(dn / En, 2) + pow(dt / Et, 2) + pow(dr / Er, 2)));
 
-        // distance of the cell center from sphere
-        scalar dSphere = mag(mesh().cellCentres()[cellsDisc[c]] - diskPoint_);
+    //     // distance of the cell center from sphere
+    //     scalar dSphere = mag(mesh().cellCentres()[cellsDisc[c]] - diskPoint_);
 
-        // calculate weight if its inside the sphere (cut exedent outside the disc)
-        if (dSphere <= maxR * 1.15)
-        {
-            weightCells[cellsDisc[c]] = weightCells[cellsDisc[c]] * 1;
-        }
-        else
-        {
-            weightCells[cellsDisc[c]] = weightCells[cellsDisc[c]] * 0;
-        }
+    //     // calculate weight if its inside the sphere (cut exedent outside the disc)
+    //     if (dSphere <= maxR * 1.15)
+    //     {
+    //         weightCells[cellsDisc[c]] = weightCells[cellsDisc[c]] * 1;
+    //     }
+    //     else
+    //     {
+    //         weightCells[cellsDisc[c]] = weightCells[cellsDisc[c]] * 0;
+    //     }
 
-        V_point_F += Vcells[cellsDisc[c]] * weightCells[cellsDisc[c]];
-    }
+    //     V_point_F += Vcells[cellsDisc[c]] * weightCells[cellsDisc[c]];
+    // }
 
-    // volume weighted
-    reduce(V_point_F, sumOp<scalar>());
+    // // volume weighted
+    // reduce(V_point_F, sumOp<scalar>());
 
-    //----FORCES INTERPOLATION-------------------
+    // //----FORCES INTERPOLATION-------------------
 
-    // search for the most proximate radius in table
-    rtable = 0;
-    posr = 0;
+    // // search for the most proximate radius in table
+    // rtable = 0;
+    // posr = 0;
 
-    //----interpolation procces-----------------
-    // interpolate U_inf1 (bottom value)
-    difference = 1000;
-    pos = 0;
-    // Info<< "mag(U_dPointCells_ntr) " << mag(U_dPointCells_ntr) << endl;
-    // Info<<"Using UrefList_[pos1]" << endl;
-    for (int i = 0; i < (Uref2List_.size() - 1); i = i + 1)
-    {
-        if ((Uref2List_[i] == UrefList_[pos1]) and (rList_[i] == rtable) and (fabs(mag(U_dPointCells_ntr) - UdiList_[i]) < difference) && ((mag(U_dPointCells_ntr) - UdiList_[i]) >= 0))
-        {
-            // Info<< "Uref2List_[i]: " << Uref2List_[i] << endl;
-            // Info<< "rList_[i]: " << rList_[i] << endl;
-            // Info<< "UdiList_[i]: " << UdiList_[i] << endl;
+    // //----interpolation procces-----------------
+    // // interpolate U_inf1 (bottom value)
+    // difference = 1000;
+    // pos = 0;
+    // // Info<< "mag(U_dPointCells_ntr) " << mag(U_dPointCells_ntr) << endl;
+    // // Info<<"Using UrefList_[pos1]" << endl;
+    // for (int i = 0; i < (Uref2List_.size() - 1); i = i + 1)
+    // {
+    //     if ((Uref2List_[i] == UrefList_[pos1]) and (rList_[i] == rtable) and (fabs(mag(U_dPointCells_ntr) - UdiList_[i]) < difference) && ((mag(U_dPointCells_ntr) - UdiList_[i]) >= 0))
+    //     {
+    //         // Info<< "Uref2List_[i]: " << Uref2List_[i] << endl;
+    //         // Info<< "rList_[i]: " << rList_[i] << endl;
+    //         // Info<< "UdiList_[i]: " << UdiList_[i] << endl;
 
-            difference = fabs(mag(U_dPointCells_ntr) - UdiList_[i]);
-            // Info<< "difference " << difference << endl;
+    //         difference = fabs(mag(U_dPointCells_ntr) - UdiList_[i]);
+    //         // Info<< "difference " << difference << endl;
 
-            pos = i; // the position of the lower value
-        }
+    //         pos = i; // the position of the lower value
+    //     }
 
-        // just in case the value is outside the table
-        if ((Uref2List_[i] == UrefList_[pos1]) and (rList_[i] == rtable) and (fabs(mag(U_dPointCells_ntr) - UdiList_[i]) < difference) && ((mag(U_dPointCells_ntr) - UdiList_[i]) < 0))
-        {
-            lastPos = i;
-        }
-    }
+    //     // just in case the value is outside the table
+    //     if ((Uref2List_[i] == UrefList_[pos1]) and (rList_[i] == rtable) and (fabs(mag(U_dPointCells_ntr) - UdiList_[i]) < difference) && ((mag(U_dPointCells_ntr) - UdiList_[i]) < 0))
+    //     {
+    //         lastPos = i;
+    //     }
+    // }
 
-    if (difference == 1000)
-    {
-        // just in case the value is outside the table
-        pos = lastPos;
-    }
+    // if (difference == 1000)
+    // {
+    //     // just in case the value is outside the table
+    //     pos = lastPos;
+    // }
 
-    U_inf1 = ((mag(U_dPointCells_ntr) - UdiList_[pos]) * ((UinfList_[pos + nR_]) - (UinfList_[pos])) / (UdiList_[pos + nR_] - UdiList_[pos])) + (UinfList_[pos]);
-    fn1 = ((mag(U_dPointCells_ntr) - UdiList_[pos]) * ((fnList_[pos + nR_]) - (fnList_[pos])) / (UdiList_[pos + nR_] - UdiList_[pos])) + (fnList_[pos]);
-    ft1 = ((mag(U_dPointCells_ntr) - UdiList_[pos]) * ((ftList_[pos + nR_]) - (ftList_[pos])) / (UdiList_[pos + nR_] - UdiList_[pos])) + (ftList_[pos]);
+    // U_inf1 = ((mag(U_dPointCells_ntr) - UdiList_[pos]) * ((UinfList_[pos + nR_]) - (UinfList_[pos])) / (UdiList_[pos + nR_] - UdiList_[pos])) + (UinfList_[pos]);
+    // fn1 = ((mag(U_dPointCells_ntr) - UdiList_[pos]) * ((fnList_[pos + nR_]) - (fnList_[pos])) / (UdiList_[pos + nR_] - UdiList_[pos])) + (fnList_[pos]);
+    // ft1 = ((mag(U_dPointCells_ntr) - UdiList_[pos]) * ((ftList_[pos + nR_]) - (ftList_[pos])) / (UdiList_[pos + nR_] - UdiList_[pos])) + (ftList_[pos]);
 
-    // Info<< "U_inf1 : " << U_inf1  << endl;
-    // Info<< "fn1 : " << fn1  << endl;
-    // Info<< "ft1 : " << ft1  << endl;
+    // // Info<< "U_inf1 : " << U_inf1  << endl;
+    // // Info<< "fn1 : " << fn1  << endl;
+    // // Info<< "ft1 : " << ft1  << endl;
 
-    // interpolate U_inf2 (top value)
-    difference = 1000;
-    pos = 0;
-    // Info<<"Using UrefList_[pos2]" << UrefList_[pos2]<< endl;
-    for (int i = 0; i < (Uref2List_.size() - 1); i = i + 1)
-    {
-        if ((Uref2List_[i] == UrefList_[pos2]) and (rList_[i] == rtable) and (fabs(mag(U_dPointCells_ntr) - UdiList_[i]) < difference) && ((mag(U_dPointCells_ntr) - UdiList_[i]) >= 0))
-        {
+    // // interpolate U_inf2 (top value)
+    // difference = 1000;
+    // pos = 0;
+    // // Info<<"Using UrefList_[pos2]" << UrefList_[pos2]<< endl;
+    // for (int i = 0; i < (Uref2List_.size() - 1); i = i + 1)
+    // {
+    //     if ((Uref2List_[i] == UrefList_[pos2]) and (rList_[i] == rtable) and (fabs(mag(U_dPointCells_ntr) - UdiList_[i]) < difference) && ((mag(U_dPointCells_ntr) - UdiList_[i]) >= 0))
+    //     {
 
-            // Info<< "Uref2List_[i]: " << Uref2List_[i] << endl;
-            // Info<< "UdiList_[i]: " << UdiList_[i] << endl;
+    //         // Info<< "Uref2List_[i]: " << Uref2List_[i] << endl;
+    //         // Info<< "UdiList_[i]: " << UdiList_[i] << endl;
 
-            difference = fabs(mag(U_dPointCells_ntr) - UdiList_[i]);
-            pos = i; // the position of the lower value
-        }
-        // Info<< "end of the loop" << endl;
-        // just in case the value is outside the table
-        if ((Uref2List_[i] == UrefList_[pos2]) and (rList_[i] == rtable) and (fabs(mag(U_dPointCells_ntr) - UdiList_[i]) < difference) && ((mag(U_dPointCells_ntr) - UdiList_[i]) < 0))
-        {
-            lastPos = i;
-            // Info << "lastPos = i" << endl;
-        }
-    }
+    //         difference = fabs(mag(U_dPointCells_ntr) - UdiList_[i]);
+    //         pos = i; // the position of the lower value
+    //     }
+    //     // Info<< "end of the loop" << endl;
+    //     // just in case the value is outside the table
+    //     if ((Uref2List_[i] == UrefList_[pos2]) and (rList_[i] == rtable) and (fabs(mag(U_dPointCells_ntr) - UdiList_[i]) < difference) && ((mag(U_dPointCells_ntr) - UdiList_[i]) < 0))
+    //     {
+    //         lastPos = i;
+    //         // Info << "lastPos = i" << endl;
+    //     }
+    // }
 
-    if (difference == 1000)
-    {
-        // just in case the value is outside the table
-        pos = lastPos;
-        // Info<< "the value is outside the table, pos=lastPos" << endl;
-    }
+    // if (difference == 1000)
+    // {
+    //     // just in case the value is outside the table
+    //     pos = lastPos;
+    //     // Info<< "the value is outside the table, pos=lastPos" << endl;
+    // }
 
-    U_inf2 = ((mag(U_dPointCells_ntr) - UdiList_[pos]) * ((UinfList_[pos + nR_]) - (UinfList_[pos])) / (UdiList_[pos + nR_] - UdiList_[pos])) + (UinfList_[pos]);
-    fn2 = ((mag(U_dPointCells_ntr) - UdiList_[pos]) * ((fnList_[pos + nR_]) - (fnList_[pos])) / (UdiList_[pos + nR_] - UdiList_[pos])) + (fnList_[pos]);
-    ft2 = ((mag(U_dPointCells_ntr) - UdiList_[pos]) * ((ftList_[pos + nR_]) - (ftList_[pos])) / (UdiList_[pos + nR_] - UdiList_[pos])) + (ftList_[pos]);
+    // U_inf2 = ((mag(U_dPointCells_ntr) - UdiList_[pos]) * ((UinfList_[pos + nR_]) - (UinfList_[pos])) / (UdiList_[pos + nR_] - UdiList_[pos])) + (UinfList_[pos]);
+    // fn2 = ((mag(U_dPointCells_ntr) - UdiList_[pos]) * ((fnList_[pos + nR_]) - (fnList_[pos])) / (UdiList_[pos + nR_] - UdiList_[pos])) + (fnList_[pos]);
+    // ft2 = ((mag(U_dPointCells_ntr) - UdiList_[pos]) * ((ftList_[pos + nR_]) - (ftList_[pos])) / (UdiList_[pos + nR_] - UdiList_[pos])) + (ftList_[pos]);
 
-    // Info<< "U_inf2 : " << U_inf2  << endl;
-    // Info<< "fn2 : " << fn2  << endl;
-    // Info<< "ft2 : " << ft2  << endl;
+    // // Info<< "U_inf2 : " << U_inf2  << endl;
+    // // Info<< "fn2 : " << fn2  << endl;
+    // // Info<< "ft2 : " << ft2  << endl;
 
-    // interpolate U_inf_point
-    U_inf_point = ((UrefYaw - UrefList_[pos1]) * ((U_inf2) - (U_inf1)) / (UrefList_[pos2] - UrefList_[pos1])) + (U_inf1);
-    fn_point = ((UrefYaw - UrefList_[pos1]) * ((fn2) - (fn1)) / (UrefList_[pos2] - UrefList_[pos1])) + (fn1);
-    ft_point = ((UrefYaw - UrefList_[pos1]) * ((ft2) - (ft1)) / (UrefList_[pos2] - UrefList_[pos1])) + (ft1);
+    // // interpolate U_inf_point
+    // U_inf_point = ((UrefYaw - UrefList_[pos1]) * ((U_inf2) - (U_inf1)) / (UrefList_[pos2] - UrefList_[pos1])) + (U_inf1);
+    // fn_point = ((UrefYaw - UrefList_[pos1]) * ((fn2) - (fn1)) / (UrefList_[pos2] - UrefList_[pos1])) + (fn1);
+    // ft_point = ((UrefYaw - UrefList_[pos1]) * ((ft2) - (ft1)) / (UrefList_[pos2] - UrefList_[pos1])) + (ft1);
 
-    // Info<< "U_inf_point : " << U_inf_point  << endl;
-    // Info<< "fn_point [N/m] : " << fn_point  << endl;
-    // Info<< "ft_point [N/m]: " << ft_point  << endl;
+    // // Info<< "U_inf_point : " << U_inf_point  << endl;
+    // // Info<< "fn_point [N/m] : " << fn_point  << endl;
+    // // Info<< "ft_point [N/m]: " << ft_point  << endl;
 
-    //----FORCES CALCULATIONS-------------------
-    // Info <<"----FORCES calculations for the disc----" << endl;
+    // //----FORCES CALCULATIONS-------------------
+    // // Info <<"----FORCES calculations for the disc----" << endl;
 
-    // Tangential and axial forces
-    // devide the force depending on the amount of artificial blades (but because the force in table
-    // is refered to 1 blade, i need to multiply by 3)
-    F_n_Bi = (fn_point * rInt_ * 3);
-    F_n_Bi = F_n_Bi / density_; // without density to the solver
-                                // Info<< "normal force [N] in the point section (with density included) " << F_n_Bi*density_ << endl;
+    // // Tangential and axial forces
+    // // devide the force depending on the amount of artificial blades (but because the force in table
+    // // is refered to 1 blade, i need to multiply by 3)
+    // F_n_Bi = (fn_point * rInt_ * 3);
+    // F_n_Bi = F_n_Bi / density_; // without density to the solver
+    //                             // Info<< "normal force [N] in the point section (with density included) " << F_n_Bi*density_ << endl;
 
-    F_tita_Bi = (ft_point * rInt_ * 3);
-    F_tita_Bi = F_tita_Bi / density_; // without density to the solver
-                                      // Info<< "tangential force [N] in the point section (with density included) " << F_tita_Bi*density_ << endl;
+    // F_tita_Bi = (ft_point * rInt_ * 3);
+    // F_tita_Bi = F_tita_Bi / density_; // without density to the solver
+    //                                   // Info<< "tangential force [N] in the point section (with density included) " << F_tita_Bi*density_ << endl;
 
-    // save for the output
-    FnList.append(F_n_Bi * density_);
-    FtList.append(F_tita_Bi * density_);
-    UnList.append(U_n);
-    UtList.append(U_t);
+    // // save for the output
+    // FnList.append(F_n_Bi * density_);
+    // FtList.append(F_tita_Bi * density_);
+    // UnList.append(U_n);
+    // UtList.append(U_t);
 
-    // global from all the blades
-    TorqueSects += mag(diskPoint_ - Bi) * F_tita_Bi * density_;
-    Pcells += mag(diskPoint_ - Bi) * F_tita_Bi * density_ * omega;
+    // // global from all the blades
+    // TorqueSects += mag(diskPoint_ - Bi) * F_tita_Bi * density_;
+    // Pcells += mag(diskPoint_ - Bi) * F_tita_Bi * density_ * omega;
 
-    // Info<< "-----FORCES finished ----- " << endl;
+    // // Info<< "-----FORCES finished ----- " << endl;
 
-    // loop over all the cells to apply source
-    forAll(cellsDisc, c)
-    {
-        // apply the thrust force in the cell, volume weighed
-        Usource[cellsDisc[c]] += (((Vcells[cellsDisc[c]] * weightCells[cellsDisc[c]]) / V_point_F) * F_n_Bi) * uniDiskDir;
+    // // loop over all the cells to apply source
+    // forAll(cellsDisc, c)
+    // {
+    //     // apply the thrust force in the cell, volume weighed
+    //     Usource[cellsDisc[c]] += (((Vcells[cellsDisc[c]] * weightCells[cellsDisc[c]]) / V_point_F) * F_n_Bi) * uniDiskDir;
 
-        // apply the tangential force in the cell, volume weighed
-        Usource[cellsDisc[c]] += (((Vcells[cellsDisc[c]] * weightCells[cellsDisc[c]]) / V_point_F) * F_tita_Bi) * F_tita_dir;
+    //     // apply the tangential force in the cell, volume weighed
+    //     Usource[cellsDisc[c]] += (((Vcells[cellsDisc[c]] * weightCells[cellsDisc[c]]) / V_point_F) * F_tita_Bi) * F_tita_dir;
 
-        // save the thrust force in the force field for paraview
-        force[cellsDisc[c]] += (((Vcells[cellsDisc[c]] * weightCells[cellsDisc[c]]) / V_point_F) * F_n_Bi) * uniDiskDir * -1 * density_ / Vcells[cellsDisc[c]];
+    //     // save the thrust force in the force field for paraview
+    //     force[cellsDisc[c]] += (((Vcells[cellsDisc[c]] * weightCells[cellsDisc[c]]) / V_point_F) * F_n_Bi) * uniDiskDir * -1 * density_ / Vcells[cellsDisc[c]];
 
-        // save the tangential force in the force field for praview
-        force[cellsDisc[c]] += (((Vcells[cellsDisc[c]] * weightCells[cellsDisc[c]]) / V_point_F) * F_tita_Bi) * F_tita_dir * -1 * density_ / Vcells[cellsDisc[c]];
+    //     // save the tangential force in the force field for praview
+    //     force[cellsDisc[c]] += (((Vcells[cellsDisc[c]] * weightCells[cellsDisc[c]]) / V_point_F) * F_tita_Bi) * F_tita_dir * -1 * density_ / Vcells[cellsDisc[c]];
 
-        // save the results of each cell, volume weighed
-        Tcells += F_n_Bi * density_ * ((Vcells[cellsDisc[c]] * weightCells[cellsDisc[c]]) / V_point_F);
-        U_infCells += uniDiskDir * UrefYaw * ((Vcells[cellsDisc[c]] * weightCells[cellsDisc[c]]) / V_point_F);
+    //     // save the results of each cell, volume weighed
+    //     Tcells += F_n_Bi * density_ * ((Vcells[cellsDisc[c]] * weightCells[cellsDisc[c]]) / V_point_F);
+    //     U_infCells += uniDiskDir * UrefYaw * ((Vcells[cellsDisc[c]] * weightCells[cellsDisc[c]]) / V_point_F);
 
-        Ftitacells += F_tita_Bi * density_ * ((Vcells[cellsDisc[c]] * weightCells[cellsDisc[c]]) / V_point_F);
+    //     Ftitacells += F_tita_Bi * density_ * ((Vcells[cellsDisc[c]] * weightCells[cellsDisc[c]]) / V_point_F);
 
-    } // close loop cells in sectional point
-
+    // } // close loop cells in sectional point
+    // --- END OF FORCES FOR CENTER NODE ----------------------------------------------
+    
     Info << "Done with force interpolation" << endl;
 
     //---colecting data from all the procesors
