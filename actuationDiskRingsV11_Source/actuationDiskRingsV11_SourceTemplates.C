@@ -114,40 +114,31 @@ void Foam::fv::actuationDiskRingsV11_Source::addactuationDiskRings_AxialInertial
     // calculate the radius
     scalar maxR = sqrt(diskArea_ / M_PI);
 
-    //--------------------line orientation------------------------------------------------
-    //-----Yaw rotation option
+//----- YAW ROTATION OPTION  -------------------------------------------------------------
     vector uniDiskDir = vector(0, 0, 0);
     scalar yawRad;
 
     if (yaw_ == 360)
     {
-        // Info<<"Because yaw = 360, no yaw restriction is applied, free orientation aviable"<< endl;
-
         // volume of the center cells of the sphere
-
         scalar Vcenter_orient = 0.0;
-
         forAll(cells, c)
         {
-
-            if (mag(mesh().cellCentres()[cells[c]] - diskPoint_) < (0.30 * maxR))
+            if (mag(mesh().cellCentres()[cells[c]] - diskPoint_) < (centerRation_ * maxR))
             {
                 Vcenter_orient += Vcells[cells[c]];
             }
         }
-
         reduce(Vcenter_orient, sumOp<scalar>());
 
         // Ud vector for the center cells of the sphere
         forAll(cells, c)
         {
-
-            if (mag(mesh().cellCentres()[cells[c]] - diskPoint_) < (0.30 * maxR))
+            if (mag(mesh().cellCentres()[cells[c]] - diskPoint_) < (centerRatio_ * maxR))
             {
                 U_dCenterCells_orient += U[cells[c]] * (Vcells[cells[c]] / Vcenter_orient);
             }
         }
-
         reduce(U_dCenterCells_orient, sumOp<vector>());
 
         // no orientation z component
@@ -170,7 +161,6 @@ void Foam::fv::actuationDiskRingsV11_Source::addactuationDiskRings_AxialInertial
         // Info<<"Yaw specfication activated, uniDiskDir=diskYawed"<<endl;
         // Info<< "yaw angle: " << yaw_ << endl;
         yawRad = yaw_ * 2 * M_PI / 360;
-
         // rotate the orginal diskDir with the yaw angle
         vector diskYawed = vector(diskDir_[0] * cos(yawRad) - diskDir_[1] * sin(yawRad), diskDir_[0] * sin(yawRad) + diskDir_[1] * cos(yawRad), diskDir_[2]);
         // Info << "new diskDir_ rotated with the yawed angle "<< diskYawed << endl;
@@ -610,7 +600,7 @@ void Foam::fv::actuationDiskRingsV11_Source::addactuationDiskRings_AxialInertial
             // volume of the point cells weighted, for forces
             V_point_F = 0;
 
-            // loop over all the cells to weight for FORCES
+            // --- LOOP OVER CELLS TO WEIGHT IN RELATION TO DISTANCE TO CURRENT NODE ---------------------------------- 
             forAll(cellsDisc, c)
             {
                 // change of coordinate system
