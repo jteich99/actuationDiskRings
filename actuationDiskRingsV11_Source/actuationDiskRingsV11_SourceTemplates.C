@@ -228,6 +228,10 @@ void Foam::fv::actuationDiskRingsV11_Source::addactuationDiskRings_AxialInertial
         // distance from sphere
         scalar dSphere = mag(mesh().cellCentres()[cellsDisc[c]] - diskPoint_);
 
+        scalar weightADplane;
+        scalar weightSphereCenter;
+        scalar weightSphereAD;
+
         // weight calculation
         if (UdCellsMethod_ == 0)
         {
@@ -294,7 +298,7 @@ void Foam::fv::actuationDiskRingsV11_Source::addactuationDiskRings_AxialInertial
         {
             U_dCells += U[cellsDisc[c]] * ((Vcells[cellsDisc[c]] * weightCellsAD[cellsDisc[c]]) / V_AD);
         }
-        else if (UdCenterToggle == 1)
+        else if (UdCenterToggle_ == 1)
         {
             U_dCells += U[cellsDisc[c]] * ((Vcells[cellsDisc[c]] * weightCellsADCenter[cellsDisc[c]]) / Vcenter);
         }
@@ -482,7 +486,7 @@ void Foam::fv::actuationDiskRingsV11_Source::addactuationDiskRings_AxialInertial
     total_nodes_counter = 0;
     // for each ring
 
-//--- LOOP OVER RINGS FOR FORCE CALCULATION AND DISTTIBUTION -----------------------------------------------------------------
+    //--- LOOP OVER RINGS FOR FORCE CALCULATION AND DISTTIBUTION -----------------------------------------------------------------
     // loop through rings and nodes for calculating forces and distributing them
     // for (int ring = 0; ring <= (numberRings_ - 1); ring = ring + 1)
     // Not passing through the last ring to avoid errors with the center node
@@ -501,13 +505,19 @@ void Foam::fv::actuationDiskRingsV11_Source::addactuationDiskRings_AxialInertial
         {
             tita_n_Rad = 2 * M_PI * (tita_r * (nodeIterator - 1)) / 360;
 
-			// position of the node considering disk center = (0,0,0)
-            if ( ring == numberRings_)
+            scalar x_node = 0;
+            scalar y_node = 0;
+            scalar z_node = 0;
+
+            // position of the node considering disk center = (0,0,0)
+            if (ring == numberRings_)
             {
-                scalar x_node = 0; 
-                scalar y_node = 0; 
-                scalar z_node = 0; 
-            } else {
+                scalar x_node = 0;
+                scalar y_node = 0;
+                scalar z_node = 0;
+            }
+            else
+            {
                 scalar x_node = -1 * rMed_r * sin(tita_n_Rad) * sin(yawRad);
                 scalar y_node = rMed_r * sin(tita_n_Rad) * cos(yawRad);
                 scalar z_node = rMed_r * cos(tita_n_Rad);
@@ -519,10 +529,13 @@ void Foam::fv::actuationDiskRingsV11_Source::addactuationDiskRings_AxialInertial
             z_node = z_node + diskPoint_[2];
 
             // blade vector
-            if ( ring == numberRings_)
+            vector bladeUniDir = vector(0, 0, 1); // we force this vector for the center node
+            if (ring == numberRings_)
             {
                 vector bladeUniDir = vector(0, 0, 1); // we force this vector for the center node
-            } else {
+            }
+            else
+            {
                 vector bladeDir = vector(x_node - diskPoint_[0], y_node - diskPoint_[1], z_node - diskPoint_[2]);
                 vector bladeUniDir = bladeDir / mag(bladeDir);
             }
@@ -665,11 +678,10 @@ void Foam::fv::actuationDiskRingsV11_Source::addactuationDiskRings_AxialInertial
             for (int i = 0; i < (Uref2List_.size() - 1); i = i + 1)
             {
                 if (
-                    (Uref2List_[i] == UrefList_[pos1]) and 
-                    (rList_[i] == rtable) and 
-                    (fabs(mag(U_dPointCells_ntr) - UdiList_[i]) < difference) && 
-                    ((mag(U_dPointCells_ntr) - UdiList_[i]) >= 0)
-                ) // look into calibration table 2 (Udi_table) for the Uref value, and search for the Udi closest to the Udi of the node
+                    (Uref2List_[i] == UrefList_[pos1]) and
+                    (rList_[i] == rtable) and
+                    (fabs(mag(U_dPointCells_ntr) - UdiList_[i]) < difference) &&
+                    ((mag(U_dPointCells_ntr) - UdiList_[i]) >= 0)) // look into calibration table 2 (Udi_table) for the Uref value, and search for the Udi closest to the Udi of the node
                 {
                     // Info<< "Uref2List_[i]: " << Uref2List_[i] << endl;
                     // Info<< "rList_[i]: " << rList_[i] << endl;
@@ -809,7 +821,7 @@ void Foam::fv::actuationDiskRingsV11_Source::addactuationDiskRings_AxialInertial
     Info << "Interpolation in the center node" << endl;
     Info << " " << endl;
 
-	//---- CALCULATION AND DISTRIBUTION OF FORCES FOR CENTER NODE ------------------------------------
+    //---- CALCULATION AND DISTRIBUTION OF FORCES FOR CENTER NODE ------------------------------------
     // SAME AS WITH ALL NODES BUT FOR CENTER NODE
     // no se porque no se podría hacer en el loop para dejar más prolijo el código. Revisasr
     //
@@ -1062,7 +1074,7 @@ void Foam::fv::actuationDiskRingsV11_Source::addactuationDiskRings_AxialInertial
 
     // } // close loop cells in sectional point
     // --- END OF FORCES FOR CENTER NODE ----------------------------------------------
-    
+
     Info << "Done with force interpolation" << endl;
 
     //---colecting data from all the procesors
