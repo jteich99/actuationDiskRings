@@ -125,6 +125,7 @@ void Foam::fv::actuationDiskRingsV11_calib_Source::addactuationDiskRingsV11_cali
     std::map<int, float> weightCells; // we replace for maps so that we don't have a giant vector
     std::map<int, float> weightCells_U;
     std::map<int, float> weightCellsAD;
+    std::map<int, float> weightCellsADCenter;
 
     // Vector acumulation
     vector U_dCenterCells_orient = vector(0, 0, 0);                   // Ud for the center cells of the sphere for orientation calculation
@@ -204,15 +205,11 @@ void Foam::fv::actuationDiskRingsV11_calib_Source::addactuationDiskRingsV11_cali
     scalar cosUinfAngle = (diskDir_[0] * uniDiskDir[0] + diskDir_[1] * uniDiskDir[1]) / (mag(diskDir_) * mag(uniDiskDir));
     scalar UrefYaw = Uref_ * cosUinfAngle;
 
-    // Info << "Uinf fixed (yawed): "<<UrefYaw<<endl;
-
     scalar upRho = 1;
 
-    // Info<< "omega(rad/s) fixed: " << omega_ << endl;
     scalar omega = omega_;
 
     scalar tsr = maxR * omega / UrefYaw;
-    // Info<< "TSR: " << tsr << endl;
 
     scalar Ct = Ct_;
 
@@ -292,6 +289,101 @@ void Foam::fv::actuationDiskRingsV11_calib_Source::addactuationDiskRingsV11_cali
 
     // Estas lineas tiran el listado de celdas que hay. Lo dejamos así porque seguramente
     //  va a venir muy bien para probar el código.
+
+    scalar Vcenter = 0.0;
+    scalar centerRatio = centerRatio_; // in the future it has to be determined by user in fvOptions --> it will unlock to make a study of it's influence in the calculation of Ud
+    scalar V_AD = 0.0;
+
+    // loop over the AD cells for weight and volume calculation
+    forAll(cellsDisc, c)
+    {
+        //---weight calculation
+        // distance from AD plane
+        scalar d = mag(uniDiskDir[0] * (mesh().cellCentres()[cellsDisc[c]][0] - diskPoint_[0]) + uniDiskDir[1] * (mesh().cellCentres()[cellsDisc[c]][1] - diskPoint_[1]) + uniDiskDir[2] * (mesh().cellCentres()[cellsDisc[c]][2] - diskPoint_[2])) / sqrt(pow(uniDiskDir[0], 2) + pow(uniDiskDir[1], 2) + pow(uniDiskDir[2], 2));
+
+        // distance from sphere
+        scalar dSphere = mag(mesh().cellCentres()[cellsDisc[c]] - diskPoint_);
+
+        scalar weightADplane;
+        scalar weightSphereCenter;
+        scalar weightSphereAD;
+
+        // weight calculation
+        if (UdCellsMethod_ == 0)
+        {
+            // sum directly values in cells in AD
+            scalar weightADplane = 1;
+            scalar weightSphereCenter = 1;
+            scalar weightSphereAD = 1;
+        }
+        else if (UdCellsMethod_ == 1)
+        {
+            // weight with Gaussian in distance to AD plane
+            scalar weightADplane = (1 / (E * sqrt(M_PI))) * exp(-1 * pow((d / E), 2));
+            scalar weightSphereCenter = 1;
+            scalar weightSphereAD = 1;
+        }
+        else if (UdCellsMethod_ == 2)
+        {
+            // weight with Gaussian in distance to AD plane + distance to center of AD
+            scalar weightADplane = (1 / (E * sqrt(M_PI))) * exp(-1 * pow((d / E), 2));
+            scalar weightSphereCenter = (1 / ((centerRatio * maxR) * sqrt(M_PI))) * exp(-1 * pow((dSphere / (centerRatio * maxR)), 2));
+            scalar weightSphereAD = (1 / (maxR * sqrt(M_PI))) * exp(-1 * pow((dSphere / maxR), 2));
+        }
+
+        // evaluate weight
+        if (dSphere <= maxR)
+        {
+            weightCellsAD[cellsDisc[c]] = weightADplane * weightSphereAD;
+            if (dSphere <= centerRatio_ * maxR)
+            {
+                weightCellsADCenter[cellsDisc[c]] = weightADplane * weightSphereCenter;
+            }
+            else
+            {
+                weightCellsADCenter[cellsDisc[c]] = 0;
+            }
+        }
+        else
+        {
+            weightCellsAD[cellsDisc[c]] = 0;
+            weightCellsADCenter[cellsDisc[c]] = 0;
+        }
+        //---
+
+        //---volume of the center cells weighted
+        Vcenter += Vcells[cellsDisc[c]] * weightCellsADCenter[cellsDisc[c]];
+        //---
+
+        //---volume of the AD cells weighted
+        V_AD += Vcells[cellsDisc[c]] * weightCellsAD[cellsDisc[c]];
+        //---
+    }
+    reduce(Vcenter, sumOp<scalar>());
+    forAll(cellsDisc, c)
+    {
+        U_dCenterCells += U[cellsDisc[c]] * ((Vcells[cellsDisc[c]] * weightCellsADCenter[cellsDisc[c]]) / Vcenter);
+
+        if (UdCenterToggle_ == 0)
+        {
+            U_dCells += U[cellsDisc[c]] * ((Vcells[cellsDisc[c]] * weightCellsAD[cellsDisc[c]]) / V_AD);
+        }
+        else if (UdCenterToggle_ == 1)
+        {
+            U_dCells += U[cellsDisc[c]] * ((Vcells[cellsDisc[c]] * weightCellsADCenter[cellsDisc[c]]) / Vcenter);
+        }
+    }
+    reduce(U_dCells, sumOp<vector>());
+    reduce(U_dCenterCells, sumOp<vector>());
+
+    scalar cosU_dCenterCells= (U_dCenterCells[0]*uniDiskDir[0]+U_dCenterCells[1]*uniDiskDir[2])/(mag(U_dCenterCells)*mag(uniDiskDir));
+    scalar U_dCenterCellsYaw=mag(U_dCenterCells)*cosU_dCenterCells;
+    Info << "U_dCenterCells not yawed: " << mag(U_dCenterCells) << endl;
+    
+    Info << "U_dCells not yawed: " << mag(U_dCells) << endl;
+    scalar cosU_dCells = (U_dCells[0] * uniDiskDir[0] + U_dCells[1] * uniDiskDir[1]) / (mag(U_dCells) * mag(uniDiskDir));
+    scalar U_dCellsYaw = mag(U_dCells) * cosU_dCells;
+    Info << "U_dCells yawed: " << U_dCellsYaw << endl;
 
     //------------------blade section centers------------------------
     // get the time in this step
@@ -1084,88 +1176,6 @@ void Foam::fv::actuationDiskRingsV11_calib_Source::addactuationDiskRingsV11_cali
     ////Info<< "TorqueSects (with density) from all the sections: " << TorqueSects << endl;
 
     //------------------Data from the disc-----------------------------------------------
-
-    //------------------wight of the AD cells depending distance from plane and sphere-----
-
-    // loop over the AD cells for weight calculation
-    forAll(cellsDisc, c)
-    {
-        // distance from AD plane
-        scalar d = mag(uniDiskDir[0] * (mesh().cellCentres()[cellsDisc[c]][0] - diskPoint_[0]) + uniDiskDir[1] * (mesh().cellCentres()[cellsDisc[c]][1] - diskPoint_[1]) + uniDiskDir[2] * (mesh().cellCentres()[cellsDisc[c]][2] - diskPoint_[2])) / sqrt(pow(uniDiskDir[0], 2) + pow(uniDiskDir[1], 2) + pow(uniDiskDir[2], 2));
-
-        // evaluate weight gauss bell
-        weightCellsAD[cellsDisc[c]] = (1 / (E * sqrt(M_PI))) * exp(-1 * pow((d / E), 2));
-
-        // distance from sphere
-        scalar dSphere = mag(mesh().cellCentres()[cellsDisc[c]] - diskPoint_);
-        // evaluate weight
-        if (dSphere <= maxR)
-        {
-            weightCellsAD[cellsDisc[c]] = weightCellsAD[cellsDisc[c]] * 1;
-        }
-        else
-        {
-            weightCellsAD[cellsDisc[c]] = weightCellsAD[cellsDisc[c]] * 0;
-        }
-    }
-
-    //---volume of the center cells weighted
-    scalar Vcenter = 0.0;
-
-    forAll(cellsDisc, c)
-    {
-
-        if (mag(mesh().cellCentres()[cellsDisc[c]] - diskPoint_) < (0.30 * maxR))
-        {
-            Vcenter += Vcells[cellsDisc[c]] * weightCellsAD[cellsDisc[c]];
-        }
-    }
-
-    reduce(Vcenter, sumOp<scalar>());
-
-    //---volume of the AD cells weighted
-    scalar V_AD = 0.0;
-
-    forAll(cellsDisc, c)
-    {
-        V_AD += Vcells[cellsDisc[c]] * weightCellsAD[cellsDisc[c]];
-    }
-
-    reduce(V_AD, sumOp<scalar>());
-    ////Info << "theorical AD volume: " << diskArea_ *minSep*2 << endl;
-    ////Info << "total AD volume weighted: " << V_AD << endl;
-
-    //---Ud for the center cells
-    forAll(cellsDisc, c)
-    {
-
-        if (mag(mesh().cellCentres()[cellsDisc[c]] - diskPoint_) < (0.30 * maxR))
-        {
-            U_dCenterCells += U[cellsDisc[c]] * ((Vcells[cellsDisc[c]] * weightCellsAD[cellsDisc[c]]) / Vcenter);
-        }
-    }
-
-    reduce(U_dCenterCells, sumOp<vector>());
-
-    scalar cosU_dCenterCells = (U_dCenterCells[0] * uniDiskDir[0] + U_dCenterCells[1] * uniDiskDir[2]) / (mag(U_dCenterCells) * mag(uniDiskDir));
-    scalar U_dCenterCellsYaw = mag(U_dCenterCells) * cosU_dCenterCells;
-
-    // Info<< "U_dCenterCells not yawed: " << mag(U_dCenterCells) << endl;
-    // Info<< "U_dCenterCells yawed: " << U_dCenterCellsYaw << endl;
-
-    //---Ud for all the cells
-    forAll(cellsDisc, c)
-    {
-        U_dCells += U[cellsDisc[c]] * ((Vcells[cellsDisc[c]] * weightCellsAD[cellsDisc[c]]) / V_AD);
-    }
-
-    reduce(U_dCells, sumOp<vector>());
-
-    scalar cosU_dCells = (U_dCells[0] * uniDiskDir[0] + U_dCells[1] * uniDiskDir[2]) / (mag(U_dCells) * mag(uniDiskDir));
-    scalar U_dCellsYaw = mag(U_dCells) * cosU_dCells;
-
-    // Info<< "U_dCells not yawed: " << mag(U_dCells) << endl;
-    // Info<< "U_dCells yawed: " << U_dCellsYaw << endl;
 
     //-----print results------------------------------------------
     //---global turbine outputs
