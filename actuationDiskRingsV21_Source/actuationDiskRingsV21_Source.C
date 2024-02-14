@@ -12,7 +12,7 @@ COMPLETAR
 -----------------------------------------------------------------------------
 
 Class
-    Foam::fv::actuationDiskRingsV11_Source
+    Foam::fv::actuationDiskRingsV21_Source
 
 Description
     Actuation disk source
@@ -33,7 +33,7 @@ Description
 
     Example usage:
     \verbatim
-    actuationDiskRingsV11_SourceCoeffs
+    actuationDiskRingsV21_SourceCoeffs
     {
         fieldNames      (U);        	// names of fields to apply source
         diskDir         (-1 0 0);   	// disk direction
@@ -47,13 +47,13 @@ Description
 
 
 SourceFiles
-    actuationDiskRingsV11_Source.C
-    actuationDiskRingsV11_SourceTemplates.C
+    actuationDiskRingsV21_Source.C
+    actuationDiskRingsV21_SourceTemplates.C
 
 
 \*---------------------------------------------------------------------------*/
 
-#include "actuationDiskRingsV11_Source.H"
+#include "actuationDiskRingsV21_Source.H"
 #include "fvMesh.H"
 #include "fvMatrix.H"
 #include "geometricOneField.H"
@@ -65,41 +65,41 @@ namespace Foam
 {
     namespace fv
     {
-        defineTypeNameAndDebug(actuationDiskRingsV11_Source, 0);
+        defineTypeNameAndDebug(actuationDiskRingsV21_Source, 0);
         addToRunTimeSelectionTable(
             option,
-            actuationDiskRingsV11_Source,
+            actuationDiskRingsV21_Source,
             dictionary);
     }
 }
 
 // * * * * * * * * * * * * Private Member Functions  * * * * * * * * * * * //
 
-void Foam::fv::actuationDiskRingsV11_Source::checkData() const
+void Foam::fv::actuationDiskRingsV21_Source::checkData() const
 {
 
     if (magSqr(diskArea_) <= VSMALL)
     {
-        FatalErrorIn("Foam::fv::actuationDiskRingsV11_Source::checkData()")
+        FatalErrorIn("Foam::fv::actuationDiskRingsV21_Source::checkData()")
             << "diskArea is approximately zero"
             << exit(FatalIOError);
     }
     if (Cp_ <= VSMALL || Ct_ <= VSMALL)
     {
-        FatalErrorIn("Foam::fv::actuationDiskRingsV11_Source::checkData()")
+        FatalErrorIn("Foam::fv::actuationDiskRingsV21_Source::checkData()")
             << "Cp and Ct must be greater than zero"
             << exit(FatalIOError);
     }
     if (mag(diskDir_) < VSMALL)
     {
-        FatalErrorIn("Foam::fv::actuationDiskRingsV11_Source::checkData()")
+        FatalErrorIn("Foam::fv::actuationDiskRingsV21_Source::checkData()")
             << "disk direction vector is approximately zero"
             << exit(FatalIOError);
     }
 
     if (returnReduce(diskCellId_, maxOp<label>()) == -1)
     {
-        FatalErrorIn("Foam::fv::actuationDiskRingsV11_Source::checkData()")
+        FatalErrorIn("Foam::fv::actuationDiskRingsV21_Source::checkData()")
             << "disk center location " << diskPoint_ << " not found in mesh"
             << exit(FatalIOError);
     }
@@ -107,7 +107,7 @@ void Foam::fv::actuationDiskRingsV11_Source::checkData() const
 
 // * * * * * * * * * * * * * * * * Constructors  * * * * * * * * * * * * * * //
 
-Foam::fv::actuationDiskRingsV11_Source::actuationDiskRingsV11_Source(
+Foam::fv::actuationDiskRingsV21_Source::actuationDiskRingsV21_Source(
     const word &name,
     const word &modelType,
     const dictionary &dict,
@@ -124,6 +124,9 @@ Foam::fv::actuationDiskRingsV11_Source::actuationDiskRingsV11_Source(
       diskArea_(readScalar(coeffs_.lookup("diskArea"))),
       centerRatio_(readScalar(coeffs_.lookup("centerRatio"))),
       diskPoint_(coeffs_.lookup("diskPoint")),
+      UdCellsMethod_(readScalar(coeffs_.lookup("UdCellsMethod"))),
+      UdCenterToggle_(readScalar(coeffs_.lookup("UdCenterToggle"))),
+      forceDistributionMethod_(readScalar(coeffs_.lookup("forceDistributionMethod"))),
       // rootFactor_(readScalar(coeffs_.lookup("rootFactor"))),
       // tipFactor_(readScalar(coeffs_.lookup("tipFactor"))),
       nodesCellsRatio_(readScalar(coeffs_.lookup("nodesCellsRatio"))),
@@ -174,7 +177,7 @@ Foam::fv::actuationDiskRingsV11_Source::actuationDiskRingsV11_Source(
     coeffs_.lookup("fieldNames") >> fieldNames_;
     applied_.setSize(fieldNames_.size(), false);
 
-    Info << "    - creating actuationDiskRingsV11_Source: "
+    Info << "    - creating actuationDiskRingsV21_Source: "
          << this->name() << endl;
     diskCellId_ = mesh.findCell(diskPoint_);
 
@@ -467,7 +470,7 @@ Foam::fv::actuationDiskRingsV11_Source::actuationDiskRingsV11_Source(
 
 // * * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * //
 
-void Foam::fv::actuationDiskRingsV11_Source::addSup(
+void Foam::fv::actuationDiskRingsV21_Source::addSup(
     fvMatrix<vector> &eqn,
     const label fieldI)
 {
@@ -505,7 +508,7 @@ void Foam::fv::actuationDiskRingsV11_Source::addSup(
     }
 }
 
-void Foam::fv::actuationDiskRingsV11_Source::addSup(
+void Foam::fv::actuationDiskRingsV21_Source::addSup(
     const volScalarField &rho,
     fvMatrix<vector> &eqn,
     const label fieldI)
@@ -544,7 +547,7 @@ void Foam::fv::actuationDiskRingsV11_Source::addSup(
     }
 }
 
-bool Foam::fv::actuationDiskRingsV11_Source::read(const dictionary &dict)
+bool Foam::fv::actuationDiskRingsV21_Source::read(const dictionary &dict)
 {
     if (cellSetOption::read(dict))
     // if (option::read(dict)) //---new line
@@ -576,7 +579,7 @@ bool Foam::fv::actuationDiskRingsV11_Source::read(const dictionary &dict)
     }
 }
 
-Foam::fv::actuationDiskRingsV11_Source::~actuationDiskRingsV11_Source()
+Foam::fv::actuationDiskRingsV21_Source::~actuationDiskRingsV21_Source()
 {
     (*outTurbines).close();
     (*outRings).close();

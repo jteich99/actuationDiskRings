@@ -12,7 +12,7 @@ COMPLETAR
 -----------------------------------------------------------------------------
 
 Class
-    Foam::fv::actuationDiskRingsV11_Source
+    Foam::fv::actuationDiskRingsV21_Source
 
 Description
     Actuation disk source
@@ -33,7 +33,7 @@ Description
 
     Example usage:
     \verbatim
-    actuationDiskRingsV11_SourceCoeffs
+    actuationDiskRingsV21_SourceCoeffs
     {
         fieldNames      (U);        	// names of fields to apply source
         diskDir         (-1 0 0);   	// disk direction
@@ -47,12 +47,12 @@ Description
 
 
 SourceFiles
-    actuationDiskRingsV11_Source.C
-    actuationDiskRingsV11_SourceTemplates.C
+    actuationDiskRingsV21_Source.C
+    actuationDiskRingsV21_SourceTemplates.C
 
 \*---------------------------------------------------------------------------*/
 
-#include "actuationDiskRingsV11_Source.H"
+#include "actuationDiskRingsV21_Source.H"
 #include "volFields.H"
 #include <math.h>
 #include "fvc.H"
@@ -61,7 +61,7 @@ SourceFiles
 // * * * * * * * * * * * * * * *  Member Functions * * * * * * * * * * * * * //
 
 template <class RhoFieldType>
-void Foam::fv::actuationDiskRingsV11_Source::addactuationDiskRings_AxialInertialResistance(
+void Foam::fv::actuationDiskRingsV21_Source::addactuationDiskRings_AxialInertialResistance(
     vectorField &Usource,
     const labelList &cells,
     const scalarField &Vcells,

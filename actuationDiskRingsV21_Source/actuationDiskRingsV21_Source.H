@@ -12,7 +12,7 @@ COMPLETAR
 -----------------------------------------------------------------------------
 
 Class
-    Foam::fv::actuationDiskRingsV11_Source
+    Foam::fv::actuationDiskRingsV21_Source
 
 Description
     Actuation disk source
@@ -33,7 +33,7 @@ Description
 
     Example usage:
     \verbatim
-    actuationDiskRingsV11_SourceCoeffs
+    actuationDiskRingsV21_SourceCoeffs
     {
         fieldNames      (U);        	// names of fields to apply source
         diskDir         (-1 0 0);   	// disk direction
@@ -47,13 +47,13 @@ Description
 
 
 SourceFiles
-    actuationDiskRingsV11_Source.C
-    actuationDiskRingsV11_SourceTemplates.C
+    actuationDiskRingsV21_Source.C
+    actuationDiskRingsV21_SourceTemplates.C
 
 \*---------------------------------------------------------------------------*/
 
-#ifndef actuationDiskRingsV11_Source_H
-#define actuationDiskRingsV11_Source_H
+#ifndef actuationDiskRingsV21_Source_H
+#define actuationDiskRingsV21_Source_H
 
 #include "cellSetOption.H"
 // #include "fvOption.H" //---new line
@@ -70,10 +70,10 @@ namespace Foam
     {
 
         /*---------------------------------------------------------------------------*\
-                             Class actuationDiskRingsV11_Source Declaration
+                             Class actuationDiskRingsV21_Source Declaration
         \*---------------------------------------------------------------------------*/
 
-        class actuationDiskRingsV11_Source
+        class actuationDiskRingsV21_Source
             : public cellSetOption
         // public option //---new line
         {
@@ -207,14 +207,14 @@ namespace Foam
             //   - 0 = sum directly values in cells in AD
             //   - 1 = weight with Gaussian in distance to AD plane
             //   - 2 = weight with Gaussian in distance to AD plane + distance to center of AD
-            scalar UdCellsMethod_;
+            int UdCellsMethod_;
 
             // toggle for measuring Ud with center of AD
             //   - 0 = use all of AD
             //   - 1 = use center of AD with centerRatio
-            scalar UdCenterToggle_;
+            int UdCenterToggle_;
 
-            scalar forceDistributionMethod_;
+            int forceDistributionMethod_;
 
             // List of cell ID for each node
             List<label> nodeCellID_;
@@ -314,10 +314,10 @@ namespace Foam
                 vectorField &force) const;
 
             //- Disallow default bitwise copy construct
-            actuationDiskRingsV11_Source(const actuationDiskRingsV11_Source &);
+            actuationDiskRingsV21_Source(const actuationDiskRingsV21_Source &);
 
             //- Disallow default bitwise assignment
-            void operator=(const actuationDiskRingsV11_Source &);
+            void operator=(const actuationDiskRingsV21_Source &);
 
             //- turbines output file
             std::ofstream *outTurbines;
@@ -330,19 +330,19 @@ namespace Foam
 
         public:
             //- Runtime type information
-            TypeName("actuationDiskRingsV11_Source");
+            TypeName("actuationDiskRingsV21_Source");
 
             // Constructors
 
             //- Construct from components
-            actuationDiskRingsV11_Source(
+            actuationDiskRingsV21_Source(
                 const word &name,
                 const word &modelType,
                 const dictionary &dict,
                 const fvMesh &mesh);
 
             //- Destructor
-            ~actuationDiskRingsV11_Source();
+            ~actuationDiskRingsV21_Source();
 
             // Member Functions
 
@@ -444,6 +444,11 @@ namespace Foam
                 return UdCenterToggle_;
             }
 
+            scalar forceDistributionMethod() const
+            {
+                return forceDistributionMethod_;
+            }
+
             //- ratio to consider in center of AD
             scalar centerRatio() const
             {
@@ -477,7 +482,7 @@ namespace Foam
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 #ifdef NoRepository
-#include "actuationDiskRingsV11_SourceTemplates.C"
+#include "actuationDiskRingsV21_SourceTemplates.C"
 #endif
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
