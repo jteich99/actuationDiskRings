@@ -218,9 +218,12 @@ void Foam::fv::actuationDiskRingsV21_Source::addactuationDiskRings_AxialInertial
         // distance from sphere
         scalar dSphere = mag(mesh().cellCentres()[cellsDisc[c]] - diskPoint_);
 
-        scalar weightADplane;
-        scalar weightSphereCenter;
-        scalar weightSphereAD;
+        scalar weightADplane = 0;
+        scalar weightSphereCenter = 0;
+        scalar weightSphereAD = 0;
+        // scalar weightADplane = (1 / (E * sqrt(M_PI))) * exp(-1 * pow((d / E), 2));
+        // scalar weightSphereCenter = (1 / ((centerRatio * maxR) * sqrt(M_PI))) * exp(-1 * pow((dSphere / (centerRatio * maxR)), 2));
+        // scalar weightSphereAD = (1 / (maxR * sqrt(M_PI))) * exp(-1 * pow((dSphere / maxR), 2));
 
         // weight calculation
         if (UdCellsMethod_ == 0)
@@ -240,9 +243,9 @@ void Foam::fv::actuationDiskRingsV21_Source::addactuationDiskRings_AxialInertial
         else if (UdCellsMethod_ == 2)
         {
             // weight with Gaussian in distance to AD plane + distance to center of AD
-            scalar weightADplane = (1 / (E * sqrt(M_PI))) * exp(-1 * pow((d / E), 2));
-            scalar weightSphereCenter = (1 / ((centerRatio * maxR) * sqrt(M_PI))) * exp(-1 * pow((dSphere / (centerRatio * maxR)), 2));
-            scalar weightSphereAD = (1 / (maxR * sqrt(M_PI))) * exp(-1 * pow((dSphere / maxR), 2));
+            weightADplane += (1 / (E * sqrt(M_PI))) * exp(-1 * pow((d / E), 2));
+            weightSphereCenter += (1 / ((centerRatio * maxR) * sqrt(M_PI))) * exp(-1 * pow((dSphere / (centerRatio * maxR)), 2));
+            weightSphereAD += (1 / (maxR * sqrt(M_PI))) * exp(-1 * pow((dSphere / maxR), 2));
         }
 
         // evaluate weight
