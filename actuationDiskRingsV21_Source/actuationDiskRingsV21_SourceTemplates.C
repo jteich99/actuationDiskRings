@@ -318,8 +318,9 @@ void Foam::fv::actuationDiskRingsV21_Source::addactuationDiskRings_AxialInertial
 
     Info << "U_dCells yawed: " << U_dCellsYaw << endl;
 
-    //-----Using U_dCells, search in the UdAvgList_----------------------------
-
+    //----- Numeric AD - Navarro Diaz 2019 -------------------------------------------------------------------
+    //
+    //----- Find positions in table 1 (UdAvgList) for interpolation using UdCells ----------------------------
     float difference = GREAT;
     int pos = 0;
     if (mag(U_dCells) < UdAvgList_[0]) // if the U_d in the disc is out the table
@@ -342,21 +343,17 @@ void Foam::fv::actuationDiskRingsV21_Source::addactuationDiskRings_AxialInertial
     int pos1 = pos;
     int pos2 = pos + 1;
 
+    //----- End of find positions in table 1 (UdAvgList) for interpolation using UdCells ----------------------------
+
     Info << "U_dCells: " << U_dCells << endl;
     // Info<< "postion of the bottom value in List: " << pos1 << endl;
 
-    //-----U_up for the cell in the up stream point
-    scalar upRho = 1;
-
-    //----Interpolate omega and pitch-----------------------------------------------
-
+    //---- Interpolate UrefYaw, omega, pitch, Ct and Cp-----------------------------------------------
     scalar UrefYaw = ((mag(U_dCells) - UdAvgList_[pos]) * ((UrefList_[pos + 1]) - (UrefList_[pos])) / (UdAvgList_[pos + 1] - UdAvgList_[pos])) + (UrefList_[pos]);
     Info << "UrefYaw(m/s) interpolated: " << UrefYaw << endl;
 
     scalar omega = ((mag(U_dCells) - UdAvgList_[pos]) * (omegaList_[pos + 1] - omegaList_[pos]) / (UdAvgList_[pos + 1] - UdAvgList_[pos])) + omegaList_[pos];
     Info << "omega(rad/s) interpolated: " << omega << endl;
-    // scalar tsr = maxR*omega/UrefYaw;
-    // Info<< "TSR: " << tsr << endl;
 
     scalar pitch = ((UrefYaw - UrefList_[pos]) * ((pitchList_[pos + 1]) - (pitchList_[pos])) / (UrefList_[pos + 1] - UrefList_[pos])) + (pitchList_[pos]);
     Info << "pitch(deg) interpolated " << pitch << endl;
@@ -367,19 +364,14 @@ void Foam::fv::actuationDiskRingsV21_Source::addactuationDiskRings_AxialInertial
 
     scalar Cp = ((mag(U_dCells) - UdAvgList_[pos]) * (CpList_[pos + 1] - CpList_[pos]) / (UdAvgList_[pos + 1] - UdAvgList_[pos])) + CpList_[pos];
     Info << "Cp interpolated " << Cp << endl;
+    //---- End of interpolate UrefYaw, omega, pitch, Ct and Cp-----------------------------------------------
 
-    //-----Thrust fixed------------------------------------------
+    //----- Calculate Thrust, Power and Torque------------------------------------------
     float density_ = 1.225;
-
-    // calculate the uniform thrust force with out density
+    scalar upRho = 1; // Thrust
     float T = 0.50 * upRho * diskArea_ * pow(UrefYaw, 2) * Ct;
     Info << "Thrust fixed (with density): " << T * density_ << endl;
 
-    // calculate the uniform thrust forces distribution on the disc [N/m2]
-    // float fn = T/diskArea_;
-    // Info<< "Uniform thrust forces distribution on the disc [N/m2] (with density): " << fn *density_ << endl;
-
-    //-----Torque fixed------------------------------------------
     // Power
     float P = 0.5 * upRho * diskArea_ * pow(UrefYaw, 3) * Cp;
     Info << "Power fixed [MW] (with density) " << P * density_ * 0.001 << endl;
@@ -390,6 +382,11 @@ void Foam::fv::actuationDiskRingsV21_Source::addactuationDiskRings_AxialInertial
     {
         Torque = P / omega;
     }
+    //----- End of calculate Thrust, Power and Torque------------------------------------------
+
+    // calculate the uniform thrust forces distribution on the disc [N/m2]
+    // float fn = T/diskArea_;
+    // Info<< "Uniform thrust forces distribution on the disc [N/m2] (with density): " << fn *density_ << endl;
 
     // Info << "Torque fixed (with density) " << Torque*density_ << endl;
 
@@ -397,13 +394,12 @@ void Foam::fv::actuationDiskRingsV21_Source::addactuationDiskRings_AxialInertial
     // float ft = (2*Torque) / (pow(maxR,2));
     // Info<< "Uniform tangential forces distribution on the disc [N/m] (with density): " << ft *density_ << endl;
 
-    //------------------blade section centers------------------------
+
+    //----- Initialization of parameters of loops of force calculation ------------------------------------------
     // get the time in this step
     scalar t = mesh().time().value();
-    // Info << "current time "<< t << endl;
 
     // For calculating node positions
-
     scalar tita_r = 0;              // angle between nodes in a certain ring
     scalar tita_n_Rad = 0;          // angle for the position of a certain node - rad
     scalar rMed_r = 0;              // radius for a certain ring
@@ -457,30 +453,29 @@ void Foam::fv::actuationDiskRingsV21_Source::addactuationDiskRings_AxialInertial
     {
         nR_ = nR_ + 1;
     }
-    // Info<< "number of radius sections in table 2 " << nR_ << endl;
 
-    scalar clockwiseSign = 1;
     // angle of the rotation in this time
+    scalar clockwiseSign = 1;
     bool clockwise = true;
     if (clockwise)
     {
         clockwiseSign = -1;
     }
 
-    //- Velocity field pointer.
+    // Velocity field pointer
     const volVectorField &U_ = mesh().lookupObject<volVectorField>("U");
     volTensorField gradU = fvc::grad(U_);
 
     Info << "Starting loop through nodes" << endl;
     Info << " " << endl;
     total_nodes_counter = 0;
-    // for each ring
+    //----- End of initialization of parameters of loops of force calculation ------------------------------------------
 
     //--- LOOP OVER RINGS FOR FORCE CALCULATION AND DISTTIBUTION -----------------------------------------------------------------
     // loop through rings and nodes for calculating forces and distributing them
-    // for (int ring = 0; ring <= (numberRings_ - 1); ring = ring + 1)
+    for (int ring = 0; ring <= (numberRings_ - 1); ring = ring + 1)
     // Not passing through the last ring to avoid errors with the center node
-    for (int ring = 0; ring <= (numberRings_); ring = ring + 1)
+    // for (int ring = 0; ring <= (numberRings_); ring = ring + 1)
     // Pass through last ring (center node)
     {
         tita_r = ringTitaList_[ring];
@@ -493,6 +488,7 @@ void Foam::fv::actuationDiskRingsV21_Source::addactuationDiskRings_AxialInertial
         // -- LOOP OVER NODES IN RING FOR FORCE CALCULATION AND DISTRBUTION -------------------------------------------------
         for (int nodeIterator = 1; nodeIterator <= ringNodesList_[ring]; nodeIterator += 1)
         {
+            //----- Calculate node position ------------------------------------------
             tita_n_Rad = 2 * M_PI * (tita_r * (nodeIterator - 1)) / 360;
 
             scalar x_node = 0;
@@ -517,7 +513,9 @@ void Foam::fv::actuationDiskRingsV21_Source::addactuationDiskRings_AxialInertial
             x_node = x_node + diskPoint_[0];
             y_node = y_node + diskPoint_[1];
             z_node = z_node + diskPoint_[2];
+            //----- End of calculate node position ------------------------------------------
 
+            //----- Calculate radial and tangential vectors ------------------------------------------
             // blade vector
             vector bladeUniDir = vector(0, 0, 1); // we force this vector for the center node
             if (ring == numberRings_)
@@ -538,19 +536,17 @@ void Foam::fv::actuationDiskRingsV21_Source::addactuationDiskRings_AxialInertial
 
             F_tita_dir = F_tita_dir / mag(F_tita_dir);
             ////Info << "F_tita_dir" << F_tita_dir << endl;
+            //----- End of calculate radial and tangential vectors ------------------------------------------
 
-            // calculate the tensor transformation of coordinates
+            //----- Calculate tensor to transfor cartesian coordinates to cylindrical coordinates -------------------------
             vector_n = -1 * uniDiskDir;
             vector_t = F_tita_dir;
             vector_r = bladeUniDir;
 
-            ////Info << "vector_n " << vector_n << endl;
-            ////Info << "vector_t " << vector_t << endl;
-            ////Info << "vector_r " << vector_r << endl;
-
             tensor Transform(vector_n[0], vector_t[0], vector_r[0],
                              vector_n[1], vector_t[1], vector_r[1],
                              vector_n[2], vector_t[2], vector_r[2]);
+            //----- End of calculate tensor to transfor cartesian coordinates to cylindrical coordinates -------------------------
 
             vector Bi = vector(x_node, y_node, z_node);
 
@@ -562,6 +558,7 @@ void Foam::fv::actuationDiskRingsV21_Source::addactuationDiskRings_AxialInertial
             // change of coordinate system
             Bi_ntr = inv(Transform) & Bi;
 
+            //----- Calculate velocity in node ------------------------------------------
             // calculate velocity in node
             // esto no esta hecho exactamente igual para el nodo del centro, pero no veo porque no funcionario de la forma que funca para todos los nodos. Lo dejo como esta aca y si crashea hago otro condicional segun el nro de nodo para copiar como esta despues
             vector U_dPointCells = vector(1000, 1000, 1000);
@@ -596,11 +593,12 @@ void Foam::fv::actuationDiskRingsV21_Source::addactuationDiskRings_AxialInertial
             // velocities in the profile coordinates
             U_n = -1 * U_dPointCells_ntr[0];
             U_t = -1 * U_dPointCells_ntr[1];
+            //----- End of calculate velocity in node ------------------------------------------
 
             // volume of the point cells weighted, for forces
             V_point_F = 0;
 
-            // --- LOOP OVER CELLS TO WEIGHT IN RELATION TO DISTANCE TO CURRENT NODE ---------------------------------- 
+            //---- Loop over cells to weight in relation to distance to current node ---------------------------------- 
             forAll(cellsDisc, c)
             {
                 // change of coordinate system
@@ -643,11 +641,11 @@ void Foam::fv::actuationDiskRingsV21_Source::addactuationDiskRings_AxialInertial
 
                 V_point_F += Vcells[cellsDisc[c]] * weightCells[cellsDisc[c]];
             }
-
             // volume weighted
             reduce(V_point_F, sumOp<scalar>());
+            //---- End of loop over cells to weight in relation to distance to current node ---------------------------------- 
 
-            //----FORCES INTERPOLATION AND CALCUATION-------------------
+            //---- Calculate Uinf, fn and ft for each position of table 2 for interpolation ---------------------------------- 
 
             // search for the most proximate radius in table
 
@@ -674,6 +672,8 @@ void Foam::fv::actuationDiskRingsV21_Source::addactuationDiskRings_AxialInertial
             pos = 0;
             // Info<< "mag(U_dPointCells_ntr) " << mag(U_dPointCells_ntr) << endl;
             // Info<<"Using UrefList_[pos1]" << endl;
+            
+            //---- Calculate Uinf, fn and ft for position 1 ---------------------------------- 
             for (int i = 0; i < (Uref2List_.size() - 1); i = i + 1)
             {
                 if (
@@ -707,12 +707,14 @@ void Foam::fv::actuationDiskRingsV21_Source::addactuationDiskRings_AxialInertial
             U_inf1 = ((mag(U_dPointCells_ntr) - UdiList_[pos]) * ((UinfList_[pos + nR_]) - (UinfList_[pos])) / (UdiList_[pos + nR_] - UdiList_[pos])) + (UinfList_[pos]);
             fn1 = ((mag(U_dPointCells_ntr) - UdiList_[pos]) * ((fnList_[pos + nR_]) - (fnList_[pos])) / (UdiList_[pos + nR_] - UdiList_[pos])) + (fnList_[pos]);
             ft1 = ((mag(U_dPointCells_ntr) - UdiList_[pos]) * ((ftList_[pos + nR_]) - (ftList_[pos])) / (UdiList_[pos + nR_] - UdiList_[pos])) + (ftList_[pos]);
+            //---- End of calculate Uinf, fn and ft for position 1 ---------------------------------- 
 
             // Info<< "U_inf1 : " << U_inf1  << endl;
             // Info<< "fn1 : " << fn1  << endl;
             // Info<< "ft1 : " << ft1  << endl;
 
             // interpolate U_inf2 (top value)
+            //---- Calculate Uinf, fn and ft for position 2 ---------------------------------- 
             difference = 1000;
             pos = 0;
             // Info<<"Using UrefList_[pos2]" << UrefList_[pos2]<< endl;
@@ -747,21 +749,25 @@ void Foam::fv::actuationDiskRingsV21_Source::addactuationDiskRings_AxialInertial
             U_inf2 = ((mag(U_dPointCells_ntr) - UdiList_[pos]) * ((UinfList_[pos + nR_]) - (UinfList_[pos])) / (UdiList_[pos + nR_] - UdiList_[pos])) + (UinfList_[pos]);
             fn2 = ((mag(U_dPointCells_ntr) - UdiList_[pos]) * ((fnList_[pos + nR_]) - (fnList_[pos])) / (UdiList_[pos + nR_] - UdiList_[pos])) + (fnList_[pos]);
             ft2 = ((mag(U_dPointCells_ntr) - UdiList_[pos]) * ((ftList_[pos + nR_]) - (ftList_[pos])) / (UdiList_[pos + nR_] - UdiList_[pos])) + (ftList_[pos]);
+            //---- End of calculate Uinf, fn and ft for position 2 ---------------------------------- 
 
             // Info<< "U_inf2 : " << U_inf2  << endl;
             // Info<< "fn2 : " << fn2  << endl;
             // Info<< "ft2 : " << ft2  << endl;
 
             // interpolate U_inf_point from values obtained from position 1 and 2
+            //---- Interpolate Uinf, fn and ft from values of position 1 and 2 ---------------------------------- 
             U_inf_point = ((UrefYaw - UrefList_[pos1]) * ((U_inf2) - (U_inf1)) / (UrefList_[pos2] - UrefList_[pos1])) + (U_inf1);
             fn_point = ((UrefYaw - UrefList_[pos1]) * ((fn2) - (fn1)) / (UrefList_[pos2] - UrefList_[pos1])) + (fn1);
             ft_point = ((UrefYaw - UrefList_[pos1]) * ((ft2) - (ft1)) / (UrefList_[pos2] - UrefList_[pos1])) + (ft1);
+            //---- End of interpolate Uinf, fn and ft from values of position 1 and 2 ---------------------------------- 
+            //---- End of calculate Uinf, fn and ft for each position of table 2 for interpolation ---------------------------------- 
 
             // Info<< "U_inf_point : " << U_inf_point  << endl;
             // Info<< "fn_point [N/m] : " << fn_point  << endl;
             // Info<< "ft_point [N/m]: " << ft_point  << endl;
 
-            //----FORCES CALCULATIONS-------------------
+            //---- Calculate total force of node from fn and ft ---------------------------------- 
             // Info <<"----FORCES calculations for the disc----" << endl;
 
             // Tangential and axial forces
@@ -786,8 +792,9 @@ void Foam::fv::actuationDiskRingsV21_Source::addactuationDiskRings_AxialInertial
             Pcells += mag(diskPoint_ - Bi) * F_tita_Bi * density_ * omega;
 
             // Info<< "-----FORCES finished ----- " << endl;
+            //---- End of calculate total force of node from fn and ft ---------------------------------- 
 
-            // --- FORCE DISTRIBUTION IN CELLS ----------------------------------------------------------------------------------------------
+            // --- Force distribution in cells -----------------------------------------------------------------------------
             // loop over all the cells to apply source
             forAll(cellsDisc, c)
             {
@@ -810,12 +817,13 @@ void Foam::fv::actuationDiskRingsV21_Source::addactuationDiskRings_AxialInertial
                 Ftitacells += F_tita_Bi * density_ * ((Vcells[cellsDisc[c]] * weightCells[cellsDisc[c]]) / V_point_F);
 
             } // close loop cells in sectional point
+            // --- End of force distribution in cells -----------------------------------------------------------------------
 
         } // close loop in ring
-        //---- END OF LOOP THROUGH NODES IN RING TO CALCULATE AND DISTRIBUTE FORCES ----------------
+        //---- End of loop through nodes in ring to calculate and distribute forces ----------------
 
     } // close loop rings
-    //---- END OF LOOP THROUGH RINGS TO CALCULATE AND DISTRIBUTE FORCES ----------------
+    //---- End of loop through rings to calculate and distribute forces ----------------
 
     Info << "Interpolation in the center node" << endl;
     Info << " " << endl;
