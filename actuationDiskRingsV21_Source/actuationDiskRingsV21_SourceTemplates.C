@@ -54,6 +54,7 @@ SourceFiles
 
 #include "actuationDiskRingsV21_Source.H"
 #include "volFields.H"
+#include <functional>
 #include <math.h>
 #include "fvc.H"
 #include "fvCFD.H"
