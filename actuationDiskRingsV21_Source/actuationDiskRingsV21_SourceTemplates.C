@@ -128,12 +128,8 @@ void Foam::fv::actuationDiskRingsV21_Source::addactuationDiskRings_AxialInertial
     scalar Tcells = 0.0;      // Thrust in each line cell
     scalar Ftitacells = 0.0;  // Tangential force in each line cell
     scalar TorqueSects = 0.0; // Torque in each seaction
-    // scalar weightCells[Vcells.size()]; //wight of All cell volumes for the AL
-    // scalar weightCells_U[Vcells.size()]; //wight of All cell volumes for the AL for local velocity
-    // scalar weightCellsAD[Vcells.size()]; //wight of All cell volumes (out and inside the sphere)
-    // const Field<scalar> zoneCellVolumes(mesh().cellVolumes(), cells);	//line cell volumes
 
-    std::map<int, float> weightCells; // we replace for maps so that we don't have a giant vector
+    std::map<int, float> weightCells; 
     std::map<int, float> weightCells_U;
     std::map<int, float> weightCellsAD;
     std::map<int, float> weightCellsADCenter;
@@ -163,7 +159,7 @@ void Foam::fv::actuationDiskRingsV21_Source::addactuationDiskRings_AxialInertial
 //----- YAW ROTATION OPTION  -------------------------------------------------------------
     vector uniDiskDir = vector(0, 0, 0);
     scalar yawRad;
-
+    
     if (yaw_ == 360)
     {
         // volume of the center cells of the sphere
@@ -178,6 +174,7 @@ void Foam::fv::actuationDiskRingsV21_Source::addactuationDiskRings_AxialInertial
         reduce(Vcenter_orient, sumOp<scalar>());
 
         // Ud vector for the center cells of the sphere
+        // aca podria entrar en un loop que ya tenga el filtro hecho a partir del loop anterior, guardando las celdas que pasan el filtro a otra 'listq'
         forAll(cells, c)
         {
             if (mag(mesh().cellCentres()[cells[c]] - diskPoint_) < (centerRatio_ * maxR))
@@ -189,27 +186,19 @@ void Foam::fv::actuationDiskRingsV21_Source::addactuationDiskRings_AxialInertial
 
         // no orientation z component
         U_dCenterCells_orient[2] = 0;
-        // Info << "self orientation with no Z component "<< U_dCenterCells_orient/mag(U_dCenterCells_orient) << endl;
 
         // for self orientation depending on the velocity on the disc
         uniDiskDir = U_dCenterCells_orient / mag(U_dCenterCells_orient);
-        ////Info<< "uniDiskDir " << uniDiskDir << endl;
 
         // angle between the self orientation vector and the inlet vector
         vector Vinlet = diskDir_ / mag(diskDir_);
-        ////Info << "Vinlet " << Vinlet << endl;
         float cosAlpha = (Vinlet[0] * uniDiskDir[0] + Vinlet[1] * uniDiskDir[1]) / (mag(Vinlet) * mag(uniDiskDir));
         float Alpha = acos(cosAlpha) * 180.0 / M_PI;
-        // Info<< "angle between the AD vector and the inlet vector "<< Alpha << endl;
     }
     else
     {
-        // Info<<"Yaw specfication activated, uniDiskDir=diskYawed"<<endl;
-        // Info<< "yaw angle: " << yaw_ << endl;
         yawRad = yaw_ * 2 * M_PI / 360;
-        // rotate the orginal diskDir with the yaw angle
         vector diskYawed = vector(diskDir_[0] * cos(yawRad) - diskDir_[1] * sin(yawRad), diskDir_[0] * sin(yawRad) + diskDir_[1] * cos(yawRad), diskDir_[2]);
-        // Info << "new diskDir_ rotated with the yawed angle "<< diskYawed << endl;
         uniDiskDir = diskYawed;
     }
 
@@ -217,7 +206,6 @@ void Foam::fv::actuationDiskRingsV21_Source::addactuationDiskRings_AxialInertial
 
     scalar minSep = 0;
     minSep = cellSize_;
-
     Info << "min horizontal Cell center separation for calculation (deltaX): " << minSep << endl;
 
     //----create list of cells that belong to the disc-----------------------------------
@@ -232,11 +220,13 @@ void Foam::fv::actuationDiskRingsV21_Source::addactuationDiskRings_AxialInertial
 
     DynamicList<label> cellsDisc;
 
-    // Pout<<"total cells in the procesor: "<<cells.size()<<endl;
     forAll(cells, c)
     {
         // distance from AD plane
-        scalar d = mag(uniDiskDir[0] * (mesh().cellCentres()[cells[c]][0] - diskPoint_[0]) + uniDiskDir[1] * (mesh().cellCentres()[cells[c]][1] - diskPoint_[1]) + uniDiskDir[2] * (mesh().cellCentres()[cells[c]][2] - diskPoint_[2])) / sqrt(pow(uniDiskDir[0], 2) + pow(uniDiskDir[1], 2) + pow(uniDiskDir[2], 2));
+        scalar d = mag (uniDiskDir[0]*(mesh().cellCentres()[cells[c]][0]- diskPoint_[0])  
+        + uniDiskDir[1]*(mesh().cellCentres()[cells[c]][1]- diskPoint_[1])
+        + uniDiskDir[2]*(mesh().cellCentres()[cells[c]][2]- diskPoint_[2]))
+        / sqrt(pow (uniDiskDir[0], 2) + pow (uniDiskDir[1], 2) + pow (uniDiskDir[2], 2));
 
         // distance of the cell center from sphere
         scalar dSphere = mag(mesh().cellCentres()[cells[c]] - diskPoint_);
@@ -244,9 +234,10 @@ void Foam::fv::actuationDiskRingsV21_Source::addactuationDiskRings_AxialInertial
         if ((dSphere <= maxR * 1.15) and (d <= 3 * E))
         {
             cellsDisc.append(cells[c]);
+            Info <<"appending to cellsDisc" <<endl;
         }
     }
-    Info << "new cell selection for the AD" << endl;
+    Info <<"total cells in the procesor: "<<cellsDisc.size()<<endl;
 
     //------------------wight of the AD cells depending distance from plane and sphere-----
 
@@ -267,38 +258,35 @@ void Foam::fv::actuationDiskRingsV21_Source::addactuationDiskRings_AxialInertial
         scalar weightADplane = 0;
         scalar weightSphereCenter = 0;
         scalar weightSphereAD = 0;
-        // scalar weightADplane = (1 / (E * sqrt(M_PI))) * exp(-1 * pow((d / E), 2));
-        // scalar weightSphereCenter = (1 / ((centerRatio * maxR) * sqrt(M_PI))) * exp(-1 * pow((dSphere / (centerRatio * maxR)), 2));
-        // scalar weightSphereAD = (1 / (maxR * sqrt(M_PI))) * exp(-1 * pow((dSphere / maxR), 2));
 
         // weight calculation
         if (UdCellsMethod_ == 0)
         {
             // sum directly values in cells in AD
-            scalar weightADplane = 1;
-            scalar weightSphereCenter = 1;
-            scalar weightSphereAD = 1;
+            weightADplane = 1;
+            weightSphereCenter = 1;
+            weightSphereAD = 1;
         }
         else if (UdCellsMethod_ == 1)
         {
             // weight with Gaussian in distance to AD plane
-            scalar weightADplane = (1 / (E * sqrt(M_PI))) * exp(-1 * pow((d / E), 2));
-            scalar weightSphereCenter = 1;
-            scalar weightSphereAD = 1;
+            weightADplane = (1 / (E * sqrt(M_PI))) * exp(-1 * pow((d / E), 2));
+            weightSphereCenter = 1;
+            weightSphereAD = 1;
         }
         else if (UdCellsMethod_ == 2)
         {
             // weight with Gaussian in distance to AD plane + distance to center of AD
-            weightADplane += (1 / (E * sqrt(M_PI))) * exp(-1 * pow((d / E), 2));
-            weightSphereCenter += (1 / ((centerRatio * maxR) * sqrt(M_PI))) * exp(-1 * pow((dSphere / (centerRatio * maxR)), 2));
-            weightSphereAD += (1 / (maxR * sqrt(M_PI))) * exp(-1 * pow((dSphere / maxR), 2));
+            weightADplane = (1 / (E * sqrt(M_PI))) * exp(-1 * pow((d / E), 2));
+            weightSphereCenter = (1 / ((centerRatio * maxR) * sqrt(M_PI))) * exp(-1 * pow((dSphere / (centerRatio * maxR)), 2));
+            weightSphereAD = (1 / (maxR * sqrt(M_PI))) * exp(-1 * pow((dSphere / maxR), 2));
         }
 
         // evaluate weight
         if (dSphere <= maxR)
         {
             weightCellsAD[cellsDisc[c]] = weightADplane * weightSphereAD;
-            if (dSphere <= centerRatio_ * maxR)
+            if (dSphere <=  (centerRatio * maxR))
             {
                 weightCellsADCenter[cellsDisc[c]] = weightADplane * weightSphereCenter;
             }
@@ -325,12 +313,9 @@ void Foam::fv::actuationDiskRingsV21_Source::addactuationDiskRings_AxialInertial
     reduce(Vcenter, sumOp<scalar>());
     reduce(V_AD, sumOp<scalar>());
 
-    ////Info << "theorical AD volume: " << diskArea_ *minSep*2 << endl;
-    ////Info << "total AD volume weighted: " << V_AD << endl;
-
+    Info << "UdCenterToggle = " << UdCenterToggle_ << endl;
     forAll(cellsDisc, c)
     {
-        // dejo el cálculo de U_dCenterCells porque creo que se usa aguas abajo, pero todavia no se bien en qué y no quiero romper nada
         U_dCenterCells += U[cellsDisc[c]] * ((Vcells[cellsDisc[c]] * weightCellsADCenter[cellsDisc[c]]) / Vcenter);
 
         if (UdCenterToggle_ == 0)
@@ -344,27 +329,16 @@ void Foam::fv::actuationDiskRingsV21_Source::addactuationDiskRings_AxialInertial
     }
     reduce(U_dCells, sumOp<vector>());
 
-    // U_dCells += U_dCenterCells;
     reduce(U_dCenterCells, sumOp<vector>());
 
     // scalar cosU_dCenterCells= (U_dCenterCells[0]*uniDiskDir[0]+U_dCenterCells[1]*uniDiskDir[2])/(mag(U_dCenterCells)*mag(uniDiskDir));
     // scalar U_dCenterCellsYaw=mag(U_dCenterCells)*cosU_dCenterCells;
 
-    Info << "U_dCenterCells not yawed: " << mag(U_dCenterCells) << endl;
-    // Info<< "U_dCenterCells yawed: " << U_dCenterCellsYaw << endl;
-
-    // ineficiente que esté acá. lo mando arriba
-    //---Ud for all the cells
-    // forAll(cellsDisc, c)
-    // {
-    // 	U_dCells += U[cellsDisc[c]] * ( ( Vcells[cellsDisc[c]] * weightCellsAD[cellsDisc[c]] ) / V_AD );
-    // }
-
-    Info << "U_dCells not yawed: " << mag(U_dCells) << endl;
-
     scalar cosU_dCells = (U_dCells[0] * uniDiskDir[0] + U_dCells[1] * uniDiskDir[1]) / (mag(U_dCells) * mag(uniDiskDir));
     scalar U_dCellsYaw = mag(U_dCells) * cosU_dCells;
 
+    Info << "U_dCenterCells not yawed: " << mag(U_dCenterCells) << endl;
+    Info << "U_dCells not yawed: " << mag(U_dCells) << endl;
     Info << "U_dCells yawed: " << U_dCellsYaw << endl;
 
     //----- Numeric AD - Navarro Diaz 2019 -------------------------------------------------------------------
@@ -395,7 +369,6 @@ void Foam::fv::actuationDiskRingsV21_Source::addactuationDiskRings_AxialInertial
     //----- End of find positions in table 1 (UdAvgList) for interpolation using UdCells ----------------------------
 
     Info << "U_dCells: " << U_dCells << endl;
-    // Info<< "postion of the bottom value in List: " << pos1 << endl;
 
     //---- Interpolate UrefYaw, omega, pitch, Ct and Cp-----------------------------------------------
     scalar UrefYaw = ((mag(U_dCells) - UdAvgList_[pos]) * ((UrefList_[pos + 1]) - (UrefList_[pos])) / (UdAvgList_[pos + 1] - UdAvgList_[pos])) + (UrefList_[pos]);
@@ -432,17 +405,6 @@ void Foam::fv::actuationDiskRingsV21_Source::addactuationDiskRings_AxialInertial
         Torque = P / omega;
     }
     //----- End of calculate Thrust, Power and Torque------------------------------------------
-
-    // calculate the uniform thrust forces distribution on the disc [N/m2]
-    // float fn = T/diskArea_;
-    // Info<< "Uniform thrust forces distribution on the disc [N/m2] (with density): " << fn *density_ << endl;
-
-    // Info << "Torque fixed (with density) " << Torque*density_ << endl;
-
-    // calculate the uniform tangential forces distribution on the disc [N/m]
-    // float ft = (2*Torque) / (pow(maxR,2));
-    // Info<< "Uniform tangential forces distribution on the disc [N/m] (with density): " << ft *density_ << endl;
-
 
     //----- Initialization of parameters of loops of force calculation ------------------------------------------
     // get the time in this step
@@ -522,16 +484,10 @@ void Foam::fv::actuationDiskRingsV21_Source::addactuationDiskRings_AxialInertial
 
     //--- LOOP OVER RINGS FOR FORCE CALCULATION AND DISTTIBUTION -----------------------------------------------------------------
     // loop through rings and nodes for calculating forces and distributing them
-    // for (int ring = 0; ring <= (numberRings_ - 1); ring = ring + 1)
-    // Not passing through the last ring to avoid errors with the center node
     for (int ring = 0; ring <= (numberRings_); ring = ring + 1)
-    // Pass through last ring (center node)
     {
         tita_r = ringTitaList_[ring];
         rMed_r = ringrMedList_[ring];
-        // Info << "ring: "<< ring << endl;
-        // Info << "nodes in ring: "<< ringNodesList_[ring] << endl;
-        // Info << "rMed_r: "<< rMed_r << endl;
 
         // for each node
         // -- LOOP OVER NODES IN RING FOR FORCE CALCULATION AND DISTRBUTION -------------------------------------------------
@@ -545,14 +501,7 @@ void Foam::fv::actuationDiskRingsV21_Source::addactuationDiskRings_AxialInertial
             scalar z_node = 0;
 
             // position of the node considering disk center = (0,0,0)
-            // if (ring == numberRings_)
             if (ring != numberRings_)
-            // {
-            //     x_node = 0;
-            //     y_node = 0;
-            //     z_node = 0;
-            // }
-            // else
             {
                 x_node = -1 * rMed_r * sin(tita_n_Rad) * sin(yawRad);
                 y_node = rMed_r * sin(tita_n_Rad) * cos(yawRad);
@@ -585,7 +534,6 @@ void Foam::fv::actuationDiskRingsV21_Source::addactuationDiskRings_AxialInertial
                                 uniDiskDir[0] * bladeUniDir[1] - uniDiskDir[1] * bladeUniDir[0]);
 
             F_tita_dir = F_tita_dir / mag(F_tita_dir);
-            ////Info << "F_tita_dir" << F_tita_dir << endl;
             //----- End of calculate radial and tangential vectors ------------------------------------------
 
             //----- Calculate tensor to transfor cartesian coordinates to cylindrical coordinates -------------------------
@@ -610,7 +558,6 @@ void Foam::fv::actuationDiskRingsV21_Source::addactuationDiskRings_AxialInertial
 
             //----- Calculate velocity in node ------------------------------------------
             // calculate velocity in node
-            // esto no esta hecho exactamente igual para el nodo del centro, pero no veo porque no funcionario de la forma que funca para todos los nodos. Lo dejo como esta aca y si crashea hago otro condicional segun el nro de nodo para copiar como esta despues
             vector U_dPointCells = vector(1000, 1000, 1000);
             if (nodeCellID_[total_nodes_counter] != -1) // if the closer cell is in this procesor
             {
@@ -645,7 +592,6 @@ void Foam::fv::actuationDiskRingsV21_Source::addactuationDiskRings_AxialInertial
             }
 
             total_nodes_counter += 1;
-            // Info << "node: "<< total_nodes_counter << endl;
 
             // change of coordinate system
             U_dPointCells_ntr = inv(Transform) & U_dPointCells;
@@ -706,21 +652,6 @@ void Foam::fv::actuationDiskRingsV21_Source::addactuationDiskRings_AxialInertial
             //---- End of loop over cells to weight in relation to distance to current node ---------------------------------- 
 
             //---- Calculate Uinf, fn and ft for each position of table 2 for interpolation ---------------------------------- 
-
-            // search for the most proximate radius in table
-
-            /*
-            scalar dist=VGREAT;
-            rtable=0;
-            posr=0;
-            while( mag(radius-rList_[posr])<dist )
-            {
-                dist=mag(radius-rList_[posr]);
-                rtable=rList_[posr];
-                posr=posr+1;
-            }
-            */
-
             posr = posrList_[ring + 1];
             rtable = rNodeList_[ring + 1];
 
@@ -729,8 +660,6 @@ void Foam::fv::actuationDiskRingsV21_Source::addactuationDiskRings_AxialInertial
                 posr = 0;
                 rtable = 0;
             }
-
-            // Info<< "Closer rtable: " << rtable << endl;
 
             //---- Calculate Uinf, fn and ft for position 1 ---------------------------------- 
             scalar pos1table2 = posInTableUref2(
@@ -742,17 +671,12 @@ void Foam::fv::actuationDiskRingsV21_Source::addactuationDiskRings_AxialInertial
                 U_dPointCells_ntr,
                 UdiList_);
 
-            // from the Udi founbd iun the table, calculate the nforces by interpolating with the other column values of the list
             U_inf1 = ((mag(U_dPointCells_ntr) - UdiList_[pos1table2]) * ((UinfList_[pos1table2 + nR_]) - (UinfList_[pos1table2])) / (UdiList_[pos1table2 + nR_] - UdiList_[pos1table2])) + (UinfList_[pos1table2]);
             fn1 = ((mag(U_dPointCells_ntr) - UdiList_[pos1table2]) * ((fnList_[pos1table2 + nR_]) - (fnList_[pos1table2])) / (UdiList_[pos1table2 + nR_] - UdiList_[pos1table2])) + (fnList_[pos1table2]);
             ft1 = ((mag(U_dPointCells_ntr) - UdiList_[pos1table2]) * ((ftList_[pos1table2 + nR_]) - (ftList_[pos1table2])) / (UdiList_[pos1table2 + nR_] - UdiList_[pos1table2])) + (ftList_[pos1table2]);
             //---- End of calculate Uinf, fn and ft for position 1 ---------------------------------- 
 
-            // Info<< "U_inf1 : " << U_inf1  << endl;
-            // Info<< "fn1 : " << fn1  << endl;
-            // Info<< "ft1 : " << ft1  << endl;
-
-
+            //---- Calculate Uinf, fn and ft for position 2 ---------------------------------- 
             scalar pos2table2 = posInTableUref2(
                 pos2,
                 Uref2List_,
@@ -767,11 +691,6 @@ void Foam::fv::actuationDiskRingsV21_Source::addactuationDiskRings_AxialInertial
             ft2 = ((mag(U_dPointCells_ntr) - UdiList_[pos2table2]) * ((ftList_[pos2table2 + nR_]) - (ftList_[pos2table2])) / (UdiList_[pos2table2 + nR_] - UdiList_[pos2table2])) + (ftList_[pos2table2]);
             //---- End of calculate Uinf, fn and ft for position 2 ---------------------------------- 
 
-            // Info<< "U_inf2 : " << U_inf2  << endl;
-            // Info<< "fn2 : " << fn2  << endl;
-            // Info<< "ft2 : " << ft2  << endl;
-
-            // interpolate U_inf_point from values obtained from position 1 and 2
             //---- Interpolate Uinf, fn and ft from values of position 1 and 2 ---------------------------------- 
             U_inf_point = ((UrefYaw - UrefList_[pos1]) * ((U_inf2) - (U_inf1)) / (UrefList_[pos2] - UrefList_[pos1])) + (U_inf1);
             fn_point = ((UrefYaw - UrefList_[pos1]) * ((fn2) - (fn1)) / (UrefList_[pos2] - UrefList_[pos1])) + (fn1);
@@ -779,23 +698,15 @@ void Foam::fv::actuationDiskRingsV21_Source::addactuationDiskRings_AxialInertial
             //---- End of interpolate Uinf, fn and ft from values of position 1 and 2 ---------------------------------- 
             //---- End of calculate Uinf, fn and ft for each position of table 2 for interpolation ---------------------------------- 
 
-            // Info<< "U_inf_point : " << U_inf_point  << endl;
-            // Info<< "fn_point [N/m] : " << fn_point  << endl;
-            // Info<< "ft_point [N/m]: " << ft_point  << endl;
-
             //---- Calculate total force of node from fn and ft ---------------------------------- 
-            // Info <<"----FORCES calculations for the disc----" << endl;
-
             // Tangential and axial forces
-            // devide the force depending on the amount of artificial blades (but because the force in table
+            // divide the force depending on the amount of artificial blades (but because the force in table
             // is refered to 1 blade, i need to multiply by 3)
             F_n_Bi = (fn_point * ringThickness_ * 3) / ringNodesList_[ring];
             F_n_Bi = F_n_Bi / density_; // without density to the solver
-                                        // Info<< "normal force [N] in the point section (with density included) " << F_n_Bi*density_ << endl;
 
             F_tita_Bi = (ft_point * ringThickness_ * 3) / ringNodesList_[ring];
             F_tita_Bi = F_tita_Bi / density_; // without density to the solver
-                                              // Info<< "tangential force [N] in the point section (with density included) " << F_tita_Bi*density_ << endl;
 
             // save for the output
             FnList.append(F_n_Bi * density_);
@@ -806,8 +717,6 @@ void Foam::fv::actuationDiskRingsV21_Source::addactuationDiskRings_AxialInertial
             // global from all the blades
             TorqueSects += mag(diskPoint_ - Bi) * F_tita_Bi * density_;
             Pcells += mag(diskPoint_ - Bi) * F_tita_Bi * density_ * omega;
-
-            // Info<< "-----FORCES finished ----- " << endl;
             //---- End of calculate total force of node from fn and ft ---------------------------------- 
 
             // --- Force distribution in cells -----------------------------------------------------------------------------
@@ -843,14 +752,9 @@ void Foam::fv::actuationDiskRingsV21_Source::addactuationDiskRings_AxialInertial
 
     //---colecting data from all the procesors
     reduce(Tcells, sumOp<scalar>());
-    // Info<< "Tcells (with density) from all the sections: " << Tcells << endl;
     reduce(Ftitacells, sumOp<scalar>());
-    // Info<< "Ftitacells (with density) from all the sections: " << Ftitacells << endl;
     reduce(U_infCells, sumOp<vector>());
     scalar U_infCellsMag = mag(U_infCells) / nodesNumber_;
-    // Info<< "U_infCells from all the sections: " << U_infCellsMag << endl;
-    // reduce(TorqueSects, sumOp<scalar>());
-    ////Info<< "TorqueSects (with density) from all the sections: " << TorqueSects << endl;
 
     //-----print results------------------------------------------
     //---global turbine outputs
