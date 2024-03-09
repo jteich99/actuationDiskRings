@@ -60,6 +60,51 @@ SourceFiles
 #include <map>
 // * * * * * * * * * * * * * * *  Member Functions * * * * * * * * * * * * * //
 
+float posInTableUref2(
+    int posI,
+    List<scalar> Uref2List_,
+    List<scalar> UrefList_,
+    List<scalar> rList_,
+    scalar rtable,
+    vector U_dPointCells_ntr,
+    List<scalar> UdiList_
+) {
+    int difference = 1000;
+    int pos = 0;
+    int lastPos = 0;
+
+    for (int i = 0; i < (Uref2List_.size() - 1); i = i + 1)
+    {
+        if (
+            (Uref2List_[i] == UrefList_[posI]) and
+            (rList_[i] == rtable) and
+            (fabs(mag(U_dPointCells_ntr) - UdiList_[i]) < difference) &&
+            ((mag(U_dPointCells_ntr) - UdiList_[i]) >= 0)) // look into calibration table 2 (Udi_table) for the Uref value, and search for the Udi closest to the Udi of the node
+        {
+            difference = fabs(mag(U_dPointCells_ntr) - UdiList_[i]);
+            pos = i; // the position of the lower value
+        }
+
+        if (
+            (Uref2List_[i] == UrefList_[posI]) and 
+            (rList_[i] == rtable) and 
+            (fabs(mag(U_dPointCells_ntr) - UdiList_[i]) < difference) && 
+            ((mag(U_dPointCells_ntr) - UdiList_[i]) < 0)
+        )
+        {
+            lastPos = i;
+        }
+    }
+
+    if (difference == 1000)
+    {
+        // just in case the value is outside the table
+        pos = lastPos;
+    }
+
+    return pos;
+}
+
 template <class RhoFieldType>
 void Foam::fv::actuationDiskRingsV21_Source::addactuationDiskRings_AxialInertialResistance(
     vectorField &Usource,
@@ -667,91 +712,44 @@ void Foam::fv::actuationDiskRingsV21_Source::addactuationDiskRings_AxialInertial
             posr = posrList_[ring + 1];
             rtable = rNodeList_[ring + 1];
 
+            {
+            }
+
             // Info<< "Closer rtable: " << rtable << endl;
 
-            //----interpolation procces-----------------
-            // interpolate U_inf1 (bottom value)
-            difference = 1000;
-            pos = 0;
-            // Info<< "mag(U_dPointCells_ntr) " << mag(U_dPointCells_ntr) << endl;
-            // Info<<"Using UrefList_[pos1]" << endl;
-            
             //---- Calculate Uinf, fn and ft for position 1 ---------------------------------- 
-            for (int i = 0; i < (Uref2List_.size() - 1); i = i + 1)
-            {
-                if (
-                    (Uref2List_[i] == UrefList_[pos1]) and
-                    (rList_[i] == rtable) and
-                    (fabs(mag(U_dPointCells_ntr) - UdiList_[i]) < difference) &&
-                    ((mag(U_dPointCells_ntr) - UdiList_[i]) >= 0)) // look into calibration table 2 (Udi_table) for the Uref value, and search for the Udi closest to the Udi of the node
-                {
-                    // Info<< "Uref2List_[i]: " << Uref2List_[i] << endl;
-                    // Info<< "rList_[i]: " << rList_[i] << endl;
-                    // Info<< "UdiList_[i]: " << UdiList_[i] << endl;
-                    difference = fabs(mag(U_dPointCells_ntr) - UdiList_[i]);
-                    // Info<< "difference " << difference << endl;
-                    pos = i; // the position of the lower value
-                }
-
-                // just in case the value is outside the table
-                if ((Uref2List_[i] == UrefList_[pos1]) and (rList_[i] == rtable) and (fabs(mag(U_dPointCells_ntr) - UdiList_[i]) < difference) && ((mag(U_dPointCells_ntr) - UdiList_[i]) < 0))
-                {
-                    lastPos = i;
-                }
-            }
-
-            if (difference == 1000)
-            {
-                // just in case the value is outside the table
-                pos = lastPos;
-            }
+            scalar pos1table2 = posInTableUref2(
+                pos1,
+                Uref2List_,
+                UrefList_,
+                rList_,
+                rtable,
+                U_dPointCells_ntr,
+                UdiList_);
 
             // from the Udi founbd iun the table, calculate the nforces by interpolating with the other column values of the list
-            U_inf1 = ((mag(U_dPointCells_ntr) - UdiList_[pos]) * ((UinfList_[pos + nR_]) - (UinfList_[pos])) / (UdiList_[pos + nR_] - UdiList_[pos])) + (UinfList_[pos]);
-            fn1 = ((mag(U_dPointCells_ntr) - UdiList_[pos]) * ((fnList_[pos + nR_]) - (fnList_[pos])) / (UdiList_[pos + nR_] - UdiList_[pos])) + (fnList_[pos]);
-            ft1 = ((mag(U_dPointCells_ntr) - UdiList_[pos]) * ((ftList_[pos + nR_]) - (ftList_[pos])) / (UdiList_[pos + nR_] - UdiList_[pos])) + (ftList_[pos]);
+            U_inf1 = ((mag(U_dPointCells_ntr) - UdiList_[pos1table2]) * ((UinfList_[pos1table2 + nR_]) - (UinfList_[pos1table2])) / (UdiList_[pos1table2 + nR_] - UdiList_[pos1table2])) + (UinfList_[pos1table2]);
+            fn1 = ((mag(U_dPointCells_ntr) - UdiList_[pos1table2]) * ((fnList_[pos1table2 + nR_]) - (fnList_[pos1table2])) / (UdiList_[pos1table2 + nR_] - UdiList_[pos1table2])) + (fnList_[pos1table2]);
+            ft1 = ((mag(U_dPointCells_ntr) - UdiList_[pos1table2]) * ((ftList_[pos1table2 + nR_]) - (ftList_[pos1table2])) / (UdiList_[pos1table2 + nR_] - UdiList_[pos1table2])) + (ftList_[pos1table2]);
             //---- End of calculate Uinf, fn and ft for position 1 ---------------------------------- 
 
             // Info<< "U_inf1 : " << U_inf1  << endl;
             // Info<< "fn1 : " << fn1  << endl;
             // Info<< "ft1 : " << ft1  << endl;
 
-            // interpolate U_inf2 (top value)
-            //---- Calculate Uinf, fn and ft for position 2 ---------------------------------- 
-            difference = 1000;
-            pos = 0;
-            // Info<<"Using UrefList_[pos2]" << UrefList_[pos2]<< endl;
-            for (int i = 0; i < (Uref2List_.size() - 1); i = i + 1)
-            {
-                // IDEM FOR WHAT WAS DONE WITH POSITION 1 OF TABLE
-                if ((Uref2List_[i] == UrefList_[pos2]) and (rList_[i] == rtable) and (fabs(mag(U_dPointCells_ntr) - UdiList_[i]) < difference) && ((mag(U_dPointCells_ntr) - UdiList_[i]) >= 0))
-                {
 
-                    // Info<< "Uref2List_[i]: " << Uref2List_[i] << endl;
-                    // Info<< "UdiList_[i]: " << UdiList_[i] << endl;
+            scalar pos2table2 = posInTableUref2(
+                pos2,
+                Uref2List_,
+                UrefList_,
+                rList_,
+                rtable,
+                U_dPointCells_ntr,
+                UdiList_);
 
-                    difference = fabs(mag(U_dPointCells_ntr) - UdiList_[i]);
-                    pos = i; // the position of the lower value
-                }
-                // Info<< "end of the loop" << endl;
-                // just in case the value is outside the table
-                if ((Uref2List_[i] == UrefList_[pos2]) and (rList_[i] == rtable) and (fabs(mag(U_dPointCells_ntr) - UdiList_[i]) < difference) && ((mag(U_dPointCells_ntr) - UdiList_[i]) < 0))
-                {
-                    lastPos = i;
-                    // Info << "lastPos = i" << endl;
-                }
-            }
-
-            if (difference == 1000)
-            {
-                // just in case the value is outside the table
-                pos = lastPos;
-                // Info<< "the value is outside the table, pos=lastPos" << endl;
-            }
-
-            U_inf2 = ((mag(U_dPointCells_ntr) - UdiList_[pos]) * ((UinfList_[pos + nR_]) - (UinfList_[pos])) / (UdiList_[pos + nR_] - UdiList_[pos])) + (UinfList_[pos]);
-            fn2 = ((mag(U_dPointCells_ntr) - UdiList_[pos]) * ((fnList_[pos + nR_]) - (fnList_[pos])) / (UdiList_[pos + nR_] - UdiList_[pos])) + (fnList_[pos]);
-            ft2 = ((mag(U_dPointCells_ntr) - UdiList_[pos]) * ((ftList_[pos + nR_]) - (ftList_[pos])) / (UdiList_[pos + nR_] - UdiList_[pos])) + (ftList_[pos]);
+            U_inf2 = ((mag(U_dPointCells_ntr) - UdiList_[pos2table2]) * ((UinfList_[pos2table2 + nR_]) - (UinfList_[pos2table2])) / (UdiList_[pos2table2 + nR_] - UdiList_[pos2table2])) + (UinfList_[pos2table2]);
+            fn2 = ((mag(U_dPointCells_ntr) - UdiList_[pos2table2]) * ((fnList_[pos2table2 + nR_]) - (fnList_[pos2table2])) / (UdiList_[pos2table2 + nR_] - UdiList_[pos2table2])) + (fnList_[pos2table2]);
+            ft2 = ((mag(U_dPointCells_ntr) - UdiList_[pos2table2]) * ((ftList_[pos2table2 + nR_]) - (ftList_[pos2table2])) / (UdiList_[pos2table2 + nR_] - UdiList_[pos2table2])) + (ftList_[pos2table2]);
             //---- End of calculate Uinf, fn and ft for position 2 ---------------------------------- 
 
             // Info<< "U_inf2 : " << U_inf2  << endl;
