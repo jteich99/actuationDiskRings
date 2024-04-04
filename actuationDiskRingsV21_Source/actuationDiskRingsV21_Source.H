@@ -215,6 +215,14 @@ namespace Foam
             int UdCenterToggle_;
 
             int forceDistributionMethod_;
+            
+            // force calculation method
+            //  - 1 = numeric actuator - via calibration table
+            int forceCalculationMethod_;
+            
+            // Uref calculation method
+            //  - 1 = numeric actuator - via calibration table
+            int UrefCalculationMethod_;
 
             // List of cell ID for each node
             List<label> nodeCellID_;
@@ -401,6 +409,11 @@ namespace Foam
                 return tipFactor_;
             }
 
+            //- Return rootDistance 
+            scalar rootDistance() const
+            {
+                return rootDistance_;
+            }
             //- table with UdAvg_table
             // List<Tuple2<vector, vector>> UdAvg_table() const
             List<Tuple2<vector, vector>> UdAvg_table() const //---new line
@@ -447,6 +460,16 @@ namespace Foam
             scalar forceDistributionMethod() const
             {
                 return forceDistributionMethod_;
+            }
+
+            scalar forceCalculationMethod() const
+            {
+                return forceCalculationMethod_;
+            }
+
+            scalar UrefCalculationMethod() const
+            {
+                return UrefCalculationMethod_;
             }
 
             //- ratio to consider in center of AD

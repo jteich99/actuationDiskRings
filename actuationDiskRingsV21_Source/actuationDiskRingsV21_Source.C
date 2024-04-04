@@ -123,10 +123,13 @@ Foam::fv::actuationDiskRingsV21_Source::actuationDiskRingsV21_Source(
       omega_(readScalar(coeffs_.lookup("omega", 0.0))),
       diskArea_(readScalar(coeffs_.lookup("diskArea"))),
       centerRatio_(readScalar(coeffs_.lookup("centerRatio"))),
+      rootDistance_(readScalar(coeffs_.lookup("rootDistance"))),
       diskPoint_(coeffs_.lookup("diskPoint")),
       UdCellsMethod_(readScalar(coeffs_.lookup("UdCellsMethod"))),
       UdCenterToggle_(readScalar(coeffs_.lookup("UdCenterToggle"))),
       forceDistributionMethod_(readScalar(coeffs_.lookup("forceDistributionMethod"))),
+      forceCalculationMethod_(readScalar(coeffs_.lookup("forceCalculationMethod"))),
+      UrefCalculationMethod_(readScalar(coeffs_.lookup("UrefCalculationMethod"))),
       // rootFactor_(readScalar(coeffs_.lookup("rootFactor"))),
       // tipFactor_(readScalar(coeffs_.lookup("tipFactor"))),
       nodesCellsRatio_(readScalar(coeffs_.lookup("nodesCellsRatio"))),
@@ -568,6 +571,12 @@ bool Foam::fv::actuationDiskRingsV21_Source::read(const dictionary &dict)
         coeffs_.readIfPresent("UdAvg_table", UdAvg_table_);
         coeffs_.readIfPresent("Udi_table", Udi_table_);
         coeffs_.readIfPresent("gradInterpolation", gradInterpolation_);
+        coeffs_.readIfPresent("UdCellsMethod", UdCellsMethod_);
+        coeffs_.readIfPresent("UdCenterToggle", UdCenterToggle_);
+        coeffs_.readIfPresent("forceDistributionMethod", forceDistributionMethod_);
+        coeffs_.readIfPresent("forceCalculationMethod", forceCalculationMethod_);
+        coeffs_.readIfPresent("UrefCalculationMethod", UrefCalculationMethod_);
+        coeffs_.readIfPresent("centerRatio", centerRatio_);
 
         checkData();
 
