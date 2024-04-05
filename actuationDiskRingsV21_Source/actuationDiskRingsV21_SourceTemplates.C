@@ -492,8 +492,8 @@ scalar Foam::fv::actuationDiskRingsV21_Source::addactuationDiskRings_AxialInerti
     else if (UrefCalculationMethod_ == 2) {
         // Analytic from Sorensen 2020
         // Ct = from UdAvg and UrefPrevious
-        Ct = 4 * (mag(U_dCells) / UrefPrevious) * ( 1 - (mag(U_dCells) / UrefPrevious) );
-        // Ct = Ct_;
+        // Ct = 4 * (mag(U_dCells) / UrefPrevious) * ( 1 - (mag(U_dCells) / UrefPrevious) );
+        Ct = Ct_;
         Info << "Ct = " << Ct << endl;
         // omega no se de donde sale
         // Info << "maxR_ = " << maxR_ << endl;
