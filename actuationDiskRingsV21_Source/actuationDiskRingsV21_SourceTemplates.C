@@ -106,20 +106,100 @@ float posInTableUref2(
     return pos;
 }
 
+float gFunction(
+    float x,
+    float rootDistance
+) {
+    float a = 2.335;
+    int b = 4;
+    // Info << "x = " << x << endl;
+    // Info << "rootDistance = " << rootDistance << endl;
+    // Info << "x/rootDistance = " << x/rootDistance << endl;
+    // Info << "pow((x/rootDistance), b) = " << pow((x/rootDistance), b) << endl;
+    float g = 1 - std::exp( - a * pow((x/rootDistance), b) );
+    return g;
+}
+
+float FFunction(
+    float x,
+    float lambda
+){
+    float Nb = 3;
+    // Info << "1 + pow(lambda,2) = " << 1 + pow(lambda,2) << endl;
+    // Info << "std::exp( - (Nb/2) * std::sqrt(1 + pow(lambda,2)) * (1 - x) ) = " << std::exp( - (Nb/2) * std::sqrt(1 + pow(lambda,2)) * (1 - x) ) << endl;
+    float F = (2/M_PI) * std::acos( std::exp( - (Nb/2) * std::sqrt(1 + pow(lambda,2)) * (1 - x) ) );
+    return F;
+}
+
+float a1Function(
+    float rootDistance,
+    float lambda
+){
+    float a1 = 0;
+    float resolution = 100;
+    float gPrev;
+    float FPrev;
+    float funcPrev;
+    float g;
+    float F;
+    float func;
+    for (float x = 2/resolution; x < 1; x += 1/resolution) {
+        // Info << "x - 1/resolution = " << x - 1/resolution << endl;
+        gPrev = gFunction(x - 1/resolution, rootDistance);
+        FPrev = FFunction(x - 1/resolution, lambda);
+        funcPrev = pow(gPrev,2) * pow(FPrev,2) / (x - 1/resolution);
+        g = gFunction(x, rootDistance);
+        F = FFunction(x, lambda);
+        // Info << "x = " << x << endl;
+        func = pow(g,2) * pow(F,2) / x;
+        a1 += (1/resolution) * ( func + funcPrev )/2;          
+    }
+    return a1;
+}
+
+float a2Function(
+    float rootDistance,
+    float lambda
+){
+    float a2 = 0;
+    float resolution = 100;
+    float gPrev;
+    float FPrev;
+    float funcPrev;
+    float g;
+    float F;
+    float func;
+    for (float x = 2/resolution; x < 1; x += 1/resolution) {
+        gPrev = gFunction(x - 1/resolution, rootDistance);
+        FPrev = FFunction(x - 1/resolution, lambda);
+        funcPrev = gPrev * FPrev * (x - 1/resolution);
+        g = gFunction(x, rootDistance);
+        F = FFunction(x, lambda);
+        func = g * F * x;
+        a2 += (1/resolution) * ( func + funcPrev )/2;          
+    }
+    return a2;
+}
+
+
 template <class RhoFieldType>
-void Foam::fv::actuationDiskRingsV21_Source::addactuationDiskRings_AxialInertialResistance(
+// void Foam::fv::actuationDiskRingsV21_Source::addactuationDiskRings_AxialInertialResistance(
+scalar Foam::fv::actuationDiskRingsV21_Source::addactuationDiskRings_AxialInertialResistance(
     vectorField &Usource,
     const labelList &cells,
     const scalarField &Vcells,
     const RhoFieldType &rho,
     const vectorField &U,
-    vectorField &force) const
+    // vectorField &force) const
+    vectorField &force,
+    scalar &UrefPrevious) const
 {
 
     //------------------//Information of the actuator line---------------------------
 
     // Info<< "---Actuator disk N: " << this->name() << endl;
     // int tamano = CtList_.size();
+    //
 
     //------------------List definitions------------------------------------------
 
@@ -156,7 +236,7 @@ void Foam::fv::actuationDiskRingsV21_Source::addactuationDiskRings_AxialInertial
     // calculate the radius
     scalar maxR = sqrt(diskArea_ / M_PI);
 
-//----- YAW ROTATION OPTION  -------------------------------------------------------------
+    //----- YAW ROTATION OPTION  -------------------------------------------------------------
     vector uniDiskDir = vector(0, 0, 0);
     scalar yawRad;
     
@@ -234,16 +314,16 @@ void Foam::fv::actuationDiskRingsV21_Source::addactuationDiskRings_AxialInertial
         if ((dSphere <= maxR * 1.15) and (d <= 3 * E))
         {
             cellsDisc.append(cells[c]);
-            Info <<"appending to cellsDisc" <<endl;
+            // Info <<"appending to cellsDisc" <<endl;
         }
     }
-    Info <<"total cells in the procesor: "<<cellsDisc.size()<<endl;
+    // Info <<"total cells in the procesor: "<<cellsDisc.size()<<endl;
 
     //------------------wight of the AD cells depending distance from plane and sphere-----
 
-    scalar Vcenter = 0.0;
     scalar centerRatio = centerRatio_; // in the future it has to be determined by user in fvOptions --> it will unlock to make a study of it's influence in the calculation of Ud
     scalar V_AD = 0.0;
+    scalar Vcenter = 0.0;
 
     // loop over the AD cells for weight and volume calculation
     forAll(cellsDisc, c)
@@ -328,7 +408,6 @@ void Foam::fv::actuationDiskRingsV21_Source::addactuationDiskRings_AxialInertial
         }
     }
     reduce(U_dCells, sumOp<vector>());
-
     reduce(U_dCenterCells, sumOp<vector>());
 
     // scalar cosU_dCenterCells= (U_dCenterCells[0]*uniDiskDir[0]+U_dCenterCells[1]*uniDiskDir[2])/(mag(U_dCenterCells)*mag(uniDiskDir));
@@ -350,6 +429,10 @@ void Foam::fv::actuationDiskRingsV21_Source::addactuationDiskRings_AxialInertial
     scalar pitch = 0;
     scalar Ct = 0;
     scalar Cp = 0;
+    float a1;
+    float a2;
+    float q0;
+    DynamicList<float> UavgRings;
 
     // get the time in this step
     scalar t = mesh().time().value();
@@ -406,13 +489,257 @@ void Foam::fv::actuationDiskRingsV21_Source::addactuationDiskRings_AxialInertial
         q0 = ( sqrt(16 * pow(lambda,2) * pow(a2,2) + 8 * a1 * Ct) - 4 * lambda * a2 ) / ( 4 * a1 );
         Info << "q0 = " << q0 << endl; 
     } 
+    else if (UrefCalculationMethod_ == 2) {
+        // Analytic from Sorensen 2020
+        // Ct = from UdAvg and UrefPrevious
+        Ct = 4 * (mag(U_dCells) / UrefPrevious) * ( 1 - (mag(U_dCells) / UrefPrevious) );
+        // Ct = Ct_;
+        Info << "Ct = " << Ct << endl;
+        // omega no se de donde sale
+        // Info << "maxR_ = " << maxR_ << endl;
+        Info << "lambda_ = " << lambda_ << endl;
+        omega = lambda_ * UrefPrevious / maxR_;
+        Info << "omega = " << omega << endl;
+        pitch = 0;
+        // factores a1 y a2 para calcular q0 del metodo analitico
+        // Info << "rootDistance_ = " << rootDistance_ << endl;
+        a1 = a1Function( rootDistance_, lambda_);
+        // Info << "a1 = " << a1 << endl;
+        a2 = a2Function( rootDistance_, lambda_);
+        q0 = ( sqrt(16 * pow(lambda_,2) * pow(a2,2) + 8 * a1 * Ct) - 4 * lambda_ * a2 ) / ( 4 * a1 );
+        Info << "q0 = " << q0 << endl; 
+        // con Udi saco U0i, y el promedio de U0i es Uref
+        // porque se vuelvo a sacr Uref con el Ct que calcule voy a obtener de nuevo UrefPrevious porque son la misma expresion
+        // Cp calculation
+        scalar tita_r = 0;
+        scalar tita_n_Rad = 0;
+        scalar rMed_r = 0;
+        scalar total_nodes_counter = 0;
+        for (int ring = 0; ring <= (numberRings_); ring = ring + 1)
+        {
+            // Info << "inside ring loop. ring " << ring << endl;
+            tita_r = ringTitaList_[ring];
+            rMed_r = ringrMedList_[ring];
 
+            // inicializar velocidad promedio del anillo
+            float UavgRing = 0;
+            for (int nodeIterator = 1; nodeIterator <= ringNodesList_[ring]; nodeIterator += 1)
+            {
+                tita_n_Rad = 2 * M_PI * (tita_r * (nodeIterator - 1)) / 360;
 
+                scalar x_node = 0;
+                scalar y_node = 0;
+                scalar z_node = 0;
 
+                if (ring != numberRings_)
+                {
+                    x_node = -1 * rMed_r * sin(tita_n_Rad) * sin(yawRad);
+                    y_node = rMed_r * sin(tita_n_Rad) * cos(yawRad);
+                    z_node = rMed_r * cos(tita_n_Rad);
+                }
 
+                x_node += diskPoint_[0];
+                y_node += diskPoint_[1];
+                z_node += diskPoint_[2];
 
+                vector Bi = vector(x_node, y_node, z_node);
+                float radius = mag(diskPoint_ - Bi);
 
+                vector U_dPointCells = vector(1000, 1000, 1000);
+                // Info << "ring " << ring << endl;
+                // Info << "nodeIterator " << nodeIterator << endl;
+                // Info << "nodeCellID_[total_nodes_counter] = " << nodeCellID_[total_nodes_counter] << endl; 
+                // Info << "total_nodes_counter = " << total_nodes_counter << endl; 
 
+                if (nodeCellID_[total_nodes_counter] != -1) // if the closer cell is in this procesor
+                {
+                    if (ring == numberRings_)
+                    {
+                        U_dPointCells =  U[nodeCellID_[nodesNumber_-1]];
+                    }
+                    else
+                    {
+                        U_dPointCells = U[nodeCellID_[total_nodes_counter]];
+                    }
+
+                    // if (gradInterpolation_ == 1)
+                    if ( 
+                        (gradInterpolation_ == 1) and
+                        (ring != numberRings_)
+                    ){
+                        vector dx = Bi - mesh().cellCentres()[nodeCellID_[total_nodes_counter]];
+                        vector dU = dx & gradU[nodeCellID_[total_nodes_counter]];
+                        U_dPointCells += dU;
+                    }
+                }
+
+                // if (ring == numberRings_)
+                // {
+                //     if (nodeCellID_[nodesNumber_-1] != -1) //if the closer cell is in this procesor
+                //     {
+                //         U_dPointCells =  U[nodeCellID_[nodesNumber_-1]];
+                //     }
+                // }
+                // else
+                // {
+                //     if (nodeCellID_[total_nodes_counter] != -1) // if the closer cell is in this procesor
+                //     {
+                //         U_dPointCells = U[nodeCellID_[total_nodes_counter]];
+                //     }
+                // }
+                // if ( 
+                //     (gradInterpolation_ == 1) and
+                //     (ring != numberRings_)
+                // ){
+                //     vector dx = Bi - mesh().cellCentres()[nodeCellID_[total_nodes_counter]];
+                //     vector dU = dx & gradU[nodeCellID_[total_nodes_counter]];
+                //     U_dPointCells += dU;
+                // }
+
+                reduce(U_dPointCells, minOp<vector>()); // take only normal values of U
+
+                if (mag(U_dPointCells) > 1000) // We add a flag in case it does not find a cell near
+                {
+                    U_dPointCells = vector(10, 0, 0);
+                    Info << "OpenFOAM cell Not found" << endl;
+                    Info << "ring: " << ring << endl;
+                    Info << "node: " << total_nodes_counter << endl;
+                    Info << "radius: " << radius << endl;
+                }
+                // Info << "U_dPointCells = " << U_dPointCells << endl;
+
+                total_nodes_counter += 1;
+
+                // vector U_dPointCells = vector(1000, 1000, 1000);
+                // Info << "ring " << ring << endl;
+                // Info << "nodeIterator " << nodeIterator << endl;
+                // Info << "nodeCellID_[total_nodes_counter] = " << nodeCellID_[total_nodes_counter] << endl; 
+                // Info << "total_nodes_counter = " << total_nodes_counter << endl;
+                // if (nodeCellID_[total_nodes_counter] != -1) // if the closer cell is in this procesor
+                // {
+                //     // medir la velocidad en el nodo
+                //     if (ring == numberRings_)
+                //     {
+                //         U_dPointCells =  U[nodeCellID_[nodesNumber_-1]];
+                //     }
+                //     else
+                //     {
+                //         U_dPointCells = U[nodeCellID_[total_nodes_counter]];
+                //     }
+
+                //     // if (gradInterpolation_ == 1)
+                //     if ( 
+                //         (gradInterpolation_ == 1) and
+                //         (ring != numberRings_)
+                //     ){
+                //         vector dx = Bi - mesh().cellCentres()[nodeCellID_[total_nodes_counter]];
+                //         vector dU = dx & gradU[nodeCellID_[total_nodes_counter]];
+                //         U_dPointCells += dU;
+                //     }
+                // }
+                // reduce(U_dPointCells, sumOp<vector>());
+                // if (mag(U_dPointCells) > 1000) // We add a flag in case it does not find a cell near
+                // {
+                //     U_dPointCells = vector(10, 0, 0);
+                //     Info << "OpenFOAM cell Not found" << endl;
+                //     Info << "ring: " << ring << endl;
+                //     Info << "node: " << total_nodes_counter << endl;
+                //     Info << "radius: " << radius << endl;
+                // }
+                // sumar a la velocidad del anillo
+                UavgRing += mag(U_dPointCells); 
+                // reduce(U_dPointCells, minOp<vector>()); // take only normal values of U
+                // total_nodes_counter += 1;
+            }
+            // reduce(UavgRing, sumOp<float>());
+            // Info << "ring = " <<  ring << endl;
+            // Info << "ringNodesList_[ring] = " <<  ringNodesList_[ring] << endl;
+            UavgRing /= ringNodesList_[ring];
+            // Info << "UavgRing = " << UavgRing << endl;
+            // dividir la suma de velocidades del anillo por la cantidad de nodos en el anillo
+            // apendar a la lista de velocidades promedio de anillo
+            UavgRings.append(UavgRing);
+        }
+        // reduce(UavgRings, sumOp<float>());
+        // Info << "ok calculating UavgRings" << endl;
+        float resolution = 100;
+        float integral = 0; 
+        int ringCounter = 0;
+        float gPrev;
+        float FPrev;
+        float funcPrev;
+        float g;
+        float F;
+        float func;
+        float Udx;
+        float UdxPrev;
+        float U0x;
+        float U0xPrev;
+        float r;
+        for (float x = 1/resolution; x < 1; x += 1/resolution) {
+            Udx = UavgRings[ringCounter]; 
+            // Info << "Udx = " << Udx << endl; 
+            // Info << "(1 + sqrt(1 - Ct)) = " << (1 + sqrt(1 - Ct)) << endl;
+            U0x = 2 * Udx / (1 + sqrt(1 - Ct));
+
+            if (ringrMedList_[ringCounter] - x < 1/resolution) {
+                UdxPrev = UavgRings[ringCounter - 1]; 
+            } else {
+                UdxPrev = UavgRings[ringCounter]; 
+            }
+            U0xPrev = 2 * UdxPrev / (1 + sqrt(1 - Ct));
+
+            g = gFunction(x, rootDistance_);
+            F = FFunction(x, lambda_);
+
+            gPrev = gFunction(x - 1/resolution, rootDistance_);
+            FPrev = FFunction(x - 1/resolution, lambda_);
+
+            func = (Udx/U0x) * g * F * x;
+            funcPrev = (UdxPrev/U0xPrev) * gPrev * FPrev * (x - 1/resolution);
+             
+            integral += (1/resolution) * (func + funcPrev)/2;
+
+            r = x * maxR_;
+            // Info << "r = " << r << "; ringCounter = " << ringCounter << endl;
+
+            if (
+                (x + 1/resolution > ringrMedList_[ringCounter] / maxR_) and
+                ( ringCounter < numberRings_ )
+            ) {
+                ringCounter += 1;
+            }
+        }
+        // reduce(integral, sumOp<float>());
+        // Info << "ok integral for Cp" << endl;
+        Cp = 4 * lambda_ * q0 * integral;
+        Info << "Cp = " << Cp << endl;
+        
+        // if (mesh().time().value() == 1)
+        // {
+        //     float UrefAvg = 0;
+        //     for (int ring = 0; ring <= (numberRings_); ring = ring + 1) {
+        //         UrefAvg += 2 * UavgRings[ring] / (1 + sqrt(1 - Ct));
+        //     }
+        //     // Info << "numberRings_ = " << numberRings_ << endl;
+        //     // reduce(UrefAvg, sumOp<float>());
+        //     UrefAvg /= numberRings_;
+        //     UrefYaw = UrefAvg;
+        // }
+        // else
+        // {
+        //     UrefYaw = 2 * mag(U_dCells) / (1 + sqrt(1 - Ct)); 
+        // }
+        float UrefAvg = 0;
+        for (int ring = 0; ring <= (numberRings_); ring = ring + 1) {
+            UrefAvg += 2 * UavgRings[ring] / (1 + sqrt(1 - Ct));
+        }
+        // Info << "numberRings_ = " << numberRings_ << endl;
+        // reduce(UrefAvg, sumOp<float>());
+        UrefAvg /= numberRings_;
+        UrefYaw = UrefAvg;
+    }
+    Info << "UrefYaw = " << UrefYaw << endl;
 
     //----- Calculate Thrust, Power and Torque------------------------------------------
     float density_ = 1.225;
@@ -481,6 +808,7 @@ void Foam::fv::actuationDiskRingsV21_Source::addactuationDiskRings_AxialInertial
     scalar rtable = 0;
     scalar posr = 0;
     scalar lastPos = 0;
+    float x_point; // x_point = radius_point / maxR
 
     // count how many radius sections are
     int nR_ = 1;
@@ -610,6 +938,34 @@ void Foam::fv::actuationDiskRingsV21_Source::addactuationDiskRings_AxialInertial
                     U_dPointCells += dU;
                 }
             }
+
+            Info << "U_dPointCells = " << U_dPointCells << endl;
+
+            // if (ring == numberRings_)
+            // {
+            //     if (nodeCellID_[nodesNumber_-1] != -1) //if the closer cell is in this procesor
+            //     {
+            //         U_dPointCells =  U[nodeCellID_[nodesNumber_-1]];
+            //     }
+            // }
+            // else
+            // {
+            //     if (nodeCellID_[total_nodes_counter] != -1) // if the closer cell is in this procesor
+            //     {
+            //         U_dPointCells = U[nodeCellID_[total_nodes_counter]];
+            //     }
+            // }
+
+            // // if (gradInterpolation_ == 1)
+            // if ( 
+            //     (gradInterpolation_ == 1) and
+            //     (ring != numberRings_)
+            // ){
+            //     vector dx = Bi - mesh().cellCentres()[nodeCellID_[total_nodes_counter]];
+            //     vector dU = dx & gradU[nodeCellID_[total_nodes_counter]];
+            //     U_dPointCells += dU;
+            // }
+            
             reduce(U_dPointCells, minOp<vector>()); // take only normal values of U
 
             if (mag(U_dPointCells) > 1000) // We add a flag in case it does not find a cell near
@@ -620,6 +976,7 @@ void Foam::fv::actuationDiskRingsV21_Source::addactuationDiskRings_AxialInertial
                 Info << "node: " << total_nodes_counter << endl;
                 Info << "radius: " << radius << endl;
             }
+            Info << "U_dPointCells = " << U_dPointCells << endl;
 
             total_nodes_counter += 1;
 
@@ -661,6 +1018,7 @@ void Foam::fv::actuationDiskRingsV21_Source::addactuationDiskRings_AxialInertial
                     weightCells[cellsDisc[c]] = (1 / (pow(E, 3) * pow(sqrt(M_PI), 3))) *
                                             exp(-1 * ( (sqrt(pow(dn,2) + pow(dr,2) + pow(dt,2))) / (E) ) );
                 }
+                // Info << "weight of cell calculated" << endl;
 
                 // distance of the cell center from sphere
                 scalar dSphere = mag(mesh().cellCentres()[cellsDisc[c]] - diskPoint_);
@@ -679,6 +1037,8 @@ void Foam::fv::actuationDiskRingsV21_Source::addactuationDiskRings_AxialInertial
             }
             // volume weighted
             reduce(V_point_F, sumOp<scalar>());
+            // reduce(weightCells, sumOp<std::map<int, float>>());
+            // Info << "ok calculating weight for cells for force distribution" << endl;
             //---- End of loop over cells to weight in relation to distance to current node ---------------------------------- 
 
             //---- force calculation with Numeric Actuator (Navarro Diaz 2019) -----------------------------------------------
@@ -735,7 +1095,40 @@ void Foam::fv::actuationDiskRingsV21_Source::addactuationDiskRings_AxialInertial
                 F_tita_Bi = (ft_point * ringThickness_ * 3) / ringNodesList_[ring];
                 F_tita_Bi /= density_;
             }
+            else if (forceCalculationMethod_ == 2)
+            // Analytical Actuator Disk by Sorensen 2020
+            {
+                // Info << "calculation method = Analytical by Sorensen 2020" << endl;
+                U_inf_point = 2 * mag(U_dPointCells) / (1 + sqrt( 1 - Ct ));
+                // Info << "U_inf_point = " << U_inf_point << endl;
+                x_point = radius / maxR_;
+                if (x_point == 0) {
+                    fn_point = 0;
+                    ft_point = 0;
+                } else {
+                    // Info << "g = " << gFunction(x_point, rootDistance_) << endl;
+                    // Info << "F = " << FFunction(x_point, lambda_) << endl;
+                    // Info << "U_inf_point = " << U_inf_point << endl;
+                    // Info << "density = " << density_ << endl;
+                    // Info << "q0 = " << q0 << endl;
 
+                    fn_point = density_ * pow(U_inf_point, 2) * q0 * (gFunction(x_point, rootDistance_) * FFunction(x_point, lambda_) / x_point) * (lambda_ * x_point + q0 * (gFunction(x_point, rootDistance_) * FFunction(x_point, lambda_) / ( 2 * x_point)));
+                    ft_point = density_ * pow(U_inf_point, 2) * q0 * (gFunction(x_point, rootDistance_) * FFunction(x_point, lambda_) / x_point) * (mag(U_dPointCells) / U_inf_point);
+
+                    nodeArea = ringAreaList_[ring];
+                    // fn_point = nodeArea * density_ * pow(U_inf_point, 2) * q0 * (gFunction(x_point, rootDistance_) * FFunction(x_point, lambda_) / x_point) * (lambda_ * x_point + q0 * (gFunction(x_point, rootDistance_) * FFunction(x_point, lambda_) / ( 2 * x_point))); 
+                    // ft_point = nodeArea * density_ * pow(U_inf_point, 2) * q0 * (gFunction(x_point, rootDistance_) * FFunction(x_point, lambda_) / x_point) * (mag(U_dPointCells) / U_inf_point);
+
+                    fn_point *= nodeArea;
+                    ft_point *= nodeArea;
+
+                    // Info << "fn = " << fn_point << endl;
+                    // Info << "ft = " << ft_point << endl;
+                }
+
+                F_n_Bi = fn_point / density_; // without density to the solver
+                F_tita_Bi = ft_point / density_; // without density to the solver
+            }
 
             //---- Calculate total force of node from fn and ft ---------------------------------- 
             // Tangential and axial forces
@@ -855,5 +1248,7 @@ void Foam::fv::actuationDiskRingsV21_Source::addactuationDiskRings_AxialInertial
 
         (*outRings) << std::endl;
     }
+
+    return UrefYaw;
 }
 // ************************************************************************* //
