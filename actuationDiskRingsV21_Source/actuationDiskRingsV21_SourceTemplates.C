@@ -212,9 +212,9 @@ scalar Foam::fv::actuationDiskRingsV21_Source::addactuationDiskRings_AxialInerti
     std::map<int, float> weightCells; 
     std::map<int, float> weightCells_U;
     std::map<int, float> weightCellsAD;
+    // Vector acumulation
     std::map<int, float> weightCellsADCenter;
 
-    // Vector acumulation
     vector U_dCenterCells_orient = vector(0, 0, 0);                   // Ud for the center cells of the sphere for orientation calculation
     vector U_dCenterCells = vector(0, 0, 0);                          // Ud for the center cells
     vector U_dCells = vector(0, 0, 0);                                // Ud in each cell
@@ -501,13 +501,15 @@ scalar Foam::fv::actuationDiskRingsV21_Source::addactuationDiskRings_AxialInerti
         omega = lambda_ * UrefPrevious / maxR_;
         Info << "omega = " << omega << endl;
         pitch = 0;
+
+        // q0 calculation considering uniform inflow
         // factores a1 y a2 para calcular q0 del metodo analitico
-        // Info << "rootDistance_ = " << rootDistance_ << endl;
         a1 = a1Function( rootDistance_, lambda_);
-        // Info << "a1 = " << a1 << endl;
         a2 = a2Function( rootDistance_, lambda_);
         q0 = ( sqrt(16 * pow(lambda_,2) * pow(a2,2) + 8 * a1 * Ct) - 4 * lambda_ * a2 ) / ( 4 * a1 );
+
         Info << "q0 = " << q0 << endl; 
+
         // con Udi saco U0i, y el promedio de U0i es Uref
         // porque se vuelvo a sacr Uref con el Ct que calcule voy a obtener de nuevo UrefPrevious porque son la misma expresion
         // Cp calculation
@@ -515,6 +517,7 @@ scalar Foam::fv::actuationDiskRingsV21_Source::addactuationDiskRings_AxialInerti
         scalar tita_n_Rad = 0;
         scalar rMed_r = 0;
         scalar total_nodes_counter = 0;
+        total_nodes_counter = 0;
         for (int ring = 0; ring <= (numberRings_); ring = ring + 1)
         {
             // Info << "inside ring loop. ring " << ring << endl;
@@ -730,14 +733,15 @@ scalar Foam::fv::actuationDiskRingsV21_Source::addactuationDiskRings_AxialInerti
         // {
         //     UrefYaw = 2 * mag(U_dCells) / (1 + sqrt(1 - Ct)); 
         // }
-        float UrefAvg = 0;
-        for (int ring = 0; ring <= (numberRings_); ring = ring + 1) {
-            UrefAvg += 2 * UavgRings[ring] / (1 + sqrt(1 - Ct));
-        }
+        // float UrefAvg = 0;
+        // for (int ring = 0; ring <= (numberRings_); ring = ring + 1) {
+        //     UrefAvg += 2 * UavgRings[ring] / (1 + sqrt(1 - Ct));
+        // }
         // Info << "numberRings_ = " << numberRings_ << endl;
         // reduce(UrefAvg, sumOp<float>());
-        UrefAvg /= numberRings_;
-        UrefYaw = UrefAvg;
+        // UrefAvg /= numberRings_;
+        // UrefYaw = UrefAvg;
+        UrefYaw = 2 * mag(U_dCellsYaw) / (1 + sqrt(1 - Ct));
     }
     Info << "UrefYaw = " << UrefYaw << endl;
 
@@ -939,7 +943,7 @@ scalar Foam::fv::actuationDiskRingsV21_Source::addactuationDiskRings_AxialInerti
                 }
             }
 
-            Info << "U_dPointCells = " << U_dPointCells << endl;
+            // Info << "U_dPointCells = " << U_dPointCells << endl;
 
             // if (ring == numberRings_)
             // {
@@ -976,7 +980,7 @@ scalar Foam::fv::actuationDiskRingsV21_Source::addactuationDiskRings_AxialInerti
                 Info << "node: " << total_nodes_counter << endl;
                 Info << "radius: " << radius << endl;
             }
-            Info << "U_dPointCells = " << U_dPointCells << endl;
+            // Info << "U_dPointCells = " << U_dPointCells << endl;
 
             total_nodes_counter += 1;
 
@@ -1129,6 +1133,8 @@ scalar Foam::fv::actuationDiskRingsV21_Source::addactuationDiskRings_AxialInerti
                 F_n_Bi = fn_point / density_; // without density to the solver
                 F_tita_Bi = ft_point / density_; // without density to the solver
             }
+            // Info << "fn = " << fn_point << endl;
+            // Info << "ft = " << ft_point << endl;
 
             //---- Calculate total force of node from fn and ft ---------------------------------- 
             // Tangential and axial forces

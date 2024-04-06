@@ -121,6 +121,7 @@ Foam::fv::actuationDiskRingsV21_Source::actuationDiskRingsV21_Source(
       cellSize_(readScalar(coeffs_.lookup("cellSize", 1000))),
       yaw_(readScalar(coeffs_.lookup("yaw"))),
       omega_(readScalar(coeffs_.lookup("omega", 0.0))),
+      lambda_(readScalar(coeffs_.lookup("lambda"))),
       diskArea_(readScalar(coeffs_.lookup("diskArea"))),
       centerRatio_(readScalar(coeffs_.lookup("centerRatio"))),
       rootDistance_(readScalar(coeffs_.lookup("rootDistance"))),
@@ -473,6 +474,8 @@ Foam::fv::actuationDiskRingsV21_Source::actuationDiskRingsV21_Source(
 
 // * * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * //
 
+scalar UrefPrevious;
+// void Foam::fv::actuationDiskRingsV21_Source::addSup(
 void Foam::fv::actuationDiskRingsV21_Source::addSup(
     fvMatrix<vector> &eqn,
     const label fieldI)
@@ -492,16 +495,30 @@ void Foam::fv::actuationDiskRingsV21_Source::addSup(
     const scalarField &cellsV = mesh_.V();
     vectorField &Usource = eqn.source();
     const vectorField &U = eqn.psi();
+    Info << "time = " << mesh().time().value() << endl;
+    // scalar UrefPrevious;
+    if (mesh().time().value() == 1)
+    {
+        // UrefPrevious = Uinf() * 1.1;
+        UrefPrevious = Uinf();
+    }
+    Info << "UrefPrevious = " << UrefPrevious << endl;
+    // scalar UrefPrevious = Uinf();
 
     if (V() > VSMALL)
     {
-        addactuationDiskRings_AxialInertialResistance(
+        // addactuationDiskRings_AxialInertialResistance(
+        // scalar Uref = addactuationDiskRings_AxialInertialResistance(
+        UrefPrevious = addactuationDiskRings_AxialInertialResistance(
             Usource,
             cells_,
             cellsV,
             geometricOneField(),
             U,
-            force);
+            // force);
+            force,
+            UrefPrevious);
+        // UrefPrevious = Uref;
     }
 
     if (mesh_.time().writeTime())
@@ -531,16 +548,30 @@ void Foam::fv::actuationDiskRingsV21_Source::addSup(
     const scalarField &cellsV = mesh_.V();
     vectorField &Usource = eqn.source();
     const vectorField &U = eqn.psi();
+    Info << "time = " << mesh().time().value() << endl;
+    // scalar UrefPrevious;
+    if (mesh().time().value() == 1)
+    {
+        // UrefPrevious = Uinf() * 1.1;
+        UrefPrevious = Uinf();
+    }
+    Info << "UrefPrevious = " << UrefPrevious << endl;
+    // scalar UrefPrevious = Uinf();
 
     if (V() > VSMALL)
     {
-        addactuationDiskRings_AxialInertialResistance(
+        // addactuationDiskRings_AxialInertialResistance(
+        // scalar Uref = addactuationDiskRings_AxialInertialResistance(
+        UrefPrevious = addactuationDiskRings_AxialInertialResistance(
             Usource,
             cells_,
             cellsV,
-            rho,
+            geometricOneField(),
             U,
-            force);
+            // force);
+            force,
+            UrefPrevious);
+        // UrefPrevious = Uref;
     }
 
     if (mesh_.time().writeTime())
@@ -561,6 +592,7 @@ bool Foam::fv::actuationDiskRingsV21_Source::read(const dictionary &dict)
         coeffs_.readIfPresent("Uinf", Uref_);
         coeffs_.readIfPresent("yaw", yaw_);
         coeffs_.readIfPresent("omega", omega_);
+        coeffs_.readIfPresent("lambda", lambda_);
         coeffs_.readIfPresent("cellSize", cellSize_);
         coeffs_.readIfPresent("diskArea", diskArea_);
         coeffs_.readIfPresent("diskPoint", diskPoint_);

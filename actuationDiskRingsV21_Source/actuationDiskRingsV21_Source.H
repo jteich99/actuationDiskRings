@@ -64,11 +64,11 @@ SourceFiles
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
+
 namespace Foam
 {
     namespace fv
     {
-
         /*---------------------------------------------------------------------------*\
                              Class actuationDiskRingsV21_Source Declaration
         \*---------------------------------------------------------------------------*/
@@ -101,6 +101,9 @@ namespace Foam
 
             //- Fixed rotational velocity [rad/s]
             scalar omega_;
+
+            // - Tip speed ratio
+            scalar lambda_;
 
             //- Fixed pitch angle [deg]
             scalar pitch_;
@@ -310,16 +313,21 @@ namespace Foam
 
             //- Check data
             void checkData() const;
+            
+            // scalar UrefPrevious = 10;
 
             //- Add resistance to the UEqn
             template <class RhoFieldType>
-            void addactuationDiskRings_AxialInertialResistance(
+            // void addactuationDiskRings_AxialInertialResistance(
+            scalar addactuationDiskRings_AxialInertialResistance(
                 vectorField &Usource,
                 const labelList &cells,
                 const scalarField &V,
                 const RhoFieldType &rho,
                 const vectorField &U,
-                vectorField &force) const;
+                // vectorField &force) const;
+                vectorField &force,
+                scalar &UrefPrevious) const;
 
             //- Disallow default bitwise copy construct
             actuationDiskRingsV21_Source(const actuationDiskRingsV21_Source &);
@@ -397,6 +405,12 @@ namespace Foam
                 return omega_;
             }
 
+            //- Return TSR 
+            scalar lambda() const
+            {
+                return lambda_;
+            }
+
             //- Return rootFactor
             scalar rootFactor() const
             {
@@ -414,6 +428,7 @@ namespace Foam
             {
                 return rootDistance_;
             }
+
             //- table with UdAvg_table
             // List<Tuple2<vector, vector>> UdAvg_table() const
             List<Tuple2<vector, vector>> UdAvg_table() const //---new line
