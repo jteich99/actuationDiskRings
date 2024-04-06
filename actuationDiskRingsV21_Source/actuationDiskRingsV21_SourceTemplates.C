@@ -742,6 +742,237 @@ scalar Foam::fv::actuationDiskRingsV21_Source::addactuationDiskRings_AxialInerti
         // UrefAvg /= numberRings_;
         // UrefYaw = UrefAvg;
         UrefYaw = 2 * mag(U_dCellsYaw) / (1 + sqrt(1 - Ct));
+    } 
+    else if (UrefCalculationMethod_ == 3) {
+        // generalization of Sorensen 2020, considering discretization in cells to avoid assuming uniform inflow
+        // Ct = 4 * (mag(U_dCells) / UrefPrevious) * ( 1 - (mag(U_dCells) / UrefPrevious) );
+        Ct = Ct_;
+        Info << "Ct = " << Ct << endl;
+        // omega no se de donde sale
+        // Info << "maxR_ = " << maxR_ << endl;
+        Info << "lambda_ = " << lambda_ << endl;
+        omega = lambda_ * UrefPrevious / maxR_;
+        Info << "omega = " << omega << endl;
+        pitch = 0;
+        
+        // q0 calculation for generalized inflow
+        // loop through nodes to calculate the generalized a1 and a2
+        a1 = 0;
+        a2 = 0;
+        float gNode;
+        float FNode;
+        float xNode;
+        float UrefNode;
+        float nodeArea;
+        scalar tita_r = 0;
+        scalar tita_n_Rad = 0;
+        scalar rMed_r = 0;
+        scalar total_nodes_counter = 0;
+        for (int ring = 0; ring <= (numberRings_); ring = ring + 1)
+        {
+            tita_r = ringTitaList_[ring];
+            rMed_r = ringrMedList_[ring];
+            for (int nodeIterator = 1; nodeIterator <= ringNodesList_[ring]; nodeIterator += 1)
+            {
+                tita_n_Rad = 2 * M_PI * (tita_r * (nodeIterator - 1)) / 360;
+
+                scalar x_node = 0;
+                scalar y_node = 0;
+                scalar z_node = 0;
+
+                if (ring != numberRings_)
+                {
+                    x_node = -1 * rMed_r * sin(tita_n_Rad) * sin(yawRad);
+                    y_node = rMed_r * sin(tita_n_Rad) * cos(yawRad);
+                    z_node = rMed_r * cos(tita_n_Rad);
+                }
+
+                x_node += diskPoint_[0];
+                y_node += diskPoint_[1];
+                z_node += diskPoint_[2];
+
+                vector Bi = vector(x_node, y_node, z_node);
+                float radius = mag(diskPoint_ - Bi);
+
+                vector U_dPointCells = vector(1000, 1000, 1000);
+                if (nodeCellID_[total_nodes_counter] != -1) // if the closer cell is in this procesor
+                {
+                    if (ring == numberRings_)
+                    {
+                        U_dPointCells =  U[nodeCellID_[nodesNumber_-1]];
+                    }
+                    else
+                    {
+                        U_dPointCells = U[nodeCellID_[total_nodes_counter]];
+                    }
+
+                    // if (gradInterpolation_ == 1)
+                    if ( 
+                        (gradInterpolation_ == 1) and
+                        (ring != numberRings_)
+                    ){
+                        vector dx = Bi - mesh().cellCentres()[nodeCellID_[total_nodes_counter]];
+                        vector dU = dx & gradU[nodeCellID_[total_nodes_counter]];
+                        U_dPointCells += dU;
+                    }
+                }
+                reduce(U_dPointCells, minOp<vector>()); // take only normal values of U
+                if (mag(U_dPointCells) > 1000) // We add a flag in case it does not find a cell near
+                {
+                    U_dPointCells = vector(10, 0, 0);
+                    Info << "OpenFOAM cell Not found" << endl;
+                    Info << "ring: " << ring << endl;
+                    Info << "node: " << total_nodes_counter << endl;
+                    Info << "radius: " << radius << endl;
+                }
+                total_nodes_counter += 1;
+                
+                xNode = rMed_r / maxR_;
+                gNode = gFunction(xNode, rootDistance_);  
+                FNode = FFunction(xNode, lambda_);  
+                nodeArea = ringAreaList_[ring];
+                UrefNode = 2 * mag(U_dPointCells) / (1 + sqrt(1 - Ct));
+                a1 += pow(UrefNode, 2) * gNode * FNode * nodeArea;
+                if (xNode > 0) {
+                    a2 += pow(UrefNode, 2) * pow( gNode * FNode / xNode , 2) * nodeArea /2;
+                }
+            }
+        }
+        Info << "a1 = " << a1 << endl; 
+        Info << "a2 = " << a2 << endl; 
+        float density = 1.225;
+        UrefYaw = 2 * mag(U_dCellsYaw) / (1 + sqrt(1 - Ct));
+
+        // float Uref_test_node = 2 * mag(U_dCellsYaw) / (1 + sqrt(1 - Ct));
+        float thrust = Ct * 0.5 * M_PI * density * pow(maxR_, 2) * pow(UrefYaw, 2);
+        // q0 = ( - lambda_ * a1 + sqrt( pow(lambda_ * a1,2) + 4 * a2 * ( Ct * M_PI  * pow(maxR_, 2) / 2 ) ) )/(2 * a2);
+        q0 = ( - lambda_ * a1 + sqrt( pow(lambda_ * a1,2) + 4 * a2 * ( thrust / density ) ) )/(2 * a2);
+
+        Info << "q0 = " << q0 << endl; 
+
+        total_nodes_counter = 0;
+        for (int ring = 0; ring <= (numberRings_); ring = ring + 1)
+        {
+            // Info << "inside ring loop. ring " << ring << endl;
+            tita_r = ringTitaList_[ring];
+            rMed_r = ringrMedList_[ring];
+
+            // inicializar velocidad promedio del anillo
+            float UavgRing = 0;
+            for (int nodeIterator = 1; nodeIterator <= ringNodesList_[ring]; nodeIterator += 1)
+            {
+                tita_n_Rad = 2 * M_PI * (tita_r * (nodeIterator - 1)) / 360;
+
+                scalar x_node = 0;
+                scalar y_node = 0;
+                scalar z_node = 0;
+
+                if (ring != numberRings_)
+                {
+                    x_node = -1 * rMed_r * sin(tita_n_Rad) * sin(yawRad);
+                    y_node = rMed_r * sin(tita_n_Rad) * cos(yawRad);
+                    z_node = rMed_r * cos(tita_n_Rad);
+                }
+
+                x_node += diskPoint_[0];
+                y_node += diskPoint_[1];
+                z_node += diskPoint_[2];
+
+                vector Bi = vector(x_node, y_node, z_node);
+                float radius = mag(diskPoint_ - Bi);
+
+                vector U_dPointCells = vector(1000, 1000, 1000);
+
+                if (nodeCellID_[total_nodes_counter] != -1) // if the closer cell is in this procesor
+                {
+                    if (ring == numberRings_)
+                    {
+                        U_dPointCells =  U[nodeCellID_[nodesNumber_-1]];
+                    }
+                    else
+                    {
+                        U_dPointCells = U[nodeCellID_[total_nodes_counter]];
+                    }
+
+                    // if (gradInterpolation_ == 1)
+                    if ( 
+                        (gradInterpolation_ == 1) and
+                        (ring != numberRings_)
+                    ){
+                        vector dx = Bi - mesh().cellCentres()[nodeCellID_[total_nodes_counter]];
+                        vector dU = dx & gradU[nodeCellID_[total_nodes_counter]];
+                        U_dPointCells += dU;
+                    }
+                }
+
+                reduce(U_dPointCells, minOp<vector>()); // take only normal values of U
+
+                if (mag(U_dPointCells) > 1000) // We add a flag in case it does not find a cell near
+                {
+                    U_dPointCells = vector(10, 0, 0);
+                    Info << "OpenFOAM cell Not found" << endl;
+                    Info << "ring: " << ring << endl;
+                    Info << "node: " << total_nodes_counter << endl;
+                    Info << "radius: " << radius << endl;
+                }
+
+                total_nodes_counter += 1;
+                UavgRing += mag(U_dPointCells); 
+            }
+            UavgRing /= ringNodesList_[ring];
+            // dividir la suma de velocidades del anillo por la cantidad de nodos en el anillo
+            // apendar a la lista de velocidades promedio de anillo
+            UavgRings.append(UavgRing);
+        }
+        float resolution = 100;
+        float integral = 0; 
+        int ringCounter = 0;
+        float gPrev;
+        float FPrev;
+        float funcPrev;
+        float g;
+        float F;
+        float func;
+        float Udx;
+        float UdxPrev;
+        float U0x;
+        float U0xPrev;
+        float r;
+        for (float x = 1/resolution; x < 1; x += 1/resolution) {
+            Udx = UavgRings[ringCounter]; 
+            U0x = 2 * Udx / (1 + sqrt(1 - Ct));
+
+            if (ringrMedList_[ringCounter] - x < 1/resolution) {
+                UdxPrev = UavgRings[ringCounter - 1]; 
+            } else {
+                UdxPrev = UavgRings[ringCounter]; 
+            }
+            U0xPrev = 2 * UdxPrev / (1 + sqrt(1 - Ct));
+
+            g = gFunction(x, rootDistance_);
+            F = FFunction(x, lambda_);
+
+            gPrev = gFunction(x - 1/resolution, rootDistance_);
+            FPrev = FFunction(x - 1/resolution, lambda_);
+
+            func = (Udx/U0x) * g * F * x;
+            funcPrev = (UdxPrev/U0xPrev) * gPrev * FPrev * (x - 1/resolution);
+             
+            integral += (1/resolution) * (func + funcPrev)/2;
+
+            r = x * maxR_;
+            // Info << "r = " << r << "; ringCounter = " << ringCounter << endl;
+
+            if (
+                (x + 1/resolution > ringrMedList_[ringCounter] / maxR_) and
+                ( ringCounter < numberRings_ )
+            ) {
+                ringCounter += 1;
+            }
+        }
+        Cp = 4 * lambda_ * q0 * integral;
+        Info << "Cp = " << Cp << endl;
+        
     }
     Info << "UrefYaw = " << UrefYaw << endl;
 
