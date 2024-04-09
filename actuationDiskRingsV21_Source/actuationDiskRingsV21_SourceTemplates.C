@@ -371,10 +371,45 @@ scalar Foam::fv::actuationDiskRingsV21_Source::addactuationDiskRings_AxialInerti
     else if (UrefCalculationMethod_ == 2) {
         // Analytic from Sorensen 2020
         // Ct = from UdAvg and UrefPrevious
+        UrefYaw = UrefPrevious;
+        scalar UrefYawOld = UrefYaw;
+        scalar UrefYawOld2 = UrefYawOld;
+        float UrefDifference = GREAT;
+        while (UrefDifference > 0.001 ) {
+            float difference = GREAT;
+            if (UrefYaw < UrefPowerCurveList_[0]) // if the U_d in the disc is out the table
+            {
+                pos = 0; // lower position
+            }
+            else
+            {
+                // search the value in the table
+                for (int i = 0; i < (UrefPowerCurveList_.size() - 1); i = i + 1)
+                {
+                    if ((fabs(UrefYaw - UrefPowerCurveList_[i]) < difference) && ((UrefYaw - UrefPowerCurveList_[i]) >= 0))
+                    {
+                        difference = fabs(UrefYaw - UrefPowerCurveList_[i]);
+                        pos = i; // the position of the lower value
+                    }
+                }
+            }
+            Ct = ((UrefYaw - UrefPowerCurveList_[pos]) * ((CtPowerCurveList_[pos + 1]) - (CtPowerCurveList_ [pos])) / (UrefPowerCurveList_[pos + 1] - UrefPowerCurveList_[pos])) + (CtPowerCurveList_[pos]);
+            UrefYaw = 2 * mag(U_dCellsYaw) / (1 + sqrt(1 - Ct));
+            UrefDifference = fabs( UrefYaw - UrefYawOld );
+            // update Uref
+            if (UrefYaw == UrefYawOld2) {
+                UrefYaw += (UrefYawOld - UrefYaw) * 0.5;
+                Ct = 4 * (mag(U_dCells) / UrefYaw) * ( 1 - (mag(U_dCells) / UrefYaw) );
+                UrefDifference = 0;
+            }
+            UrefYawOld2 = UrefYawOld;
+            UrefYawOld = UrefYaw;
+        }
+
         // Ct = 4 * (mag(U_dCells) / UrefPrevious) * ( 1 - (mag(U_dCells) / UrefPrevious) );
-        Ct = Ct_;
+        
+        Info << "UrefYaw = " << UrefYaw << endl;
         Info << "Ct = " << Ct << endl;
-        // omega no se de donde sale
         // Info << "maxR_ = " << maxR_ << endl;
         Info << "lambda_ = " << lambda_ << endl;
         omega = lambda_ * UrefPrevious / maxR_;
