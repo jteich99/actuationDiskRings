@@ -230,6 +230,19 @@ namespace Foam
             // List of cell ID for each node
             List<label> nodeCellID_;
 
+            //- power curve table. From turbine manufacturer data
+            //
+            List<vector> powerCurve_table_; //--- new line
+
+            //- UrefPowerCurve
+            List<scalar> UrefPowerCurveList_;
+
+            //- CtPowerCurve
+            List<scalar> CtPowerCurveList_;
+
+            //- CpPowerCurve
+            List<scalar> CpPowerCurveList_;
+
             //- UdAvg_table
             // List<Tuple2<vector, vector>> UdAvg_table_;
             List<Tuple2<vector, vector>> UdAvg_table_; //--- new line
@@ -345,6 +358,7 @@ namespace Foam
             std::ofstream *outListFvOptions;
 
         public:
+
             //- Runtime type information
             TypeName("actuationDiskRingsV21_Source");
 
@@ -518,6 +532,28 @@ namespace Foam
 } // End namespace Foam
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+
+Foam::vector getNodePosition(
+    Foam::scalar tita_n_Rad,
+    Foam::scalar rMed_r,
+    Foam::scalar yawRad,
+    Foam::vector diskPoint_,
+    int ring,
+    int numberRings_);
+
+Foam::vector getNodeVelocity(
+    Foam::List<Foam::label> nodeCellID_,
+    int total_nodes_counter,
+    int ring,
+    int numberRings_,
+    Foam::vectorField U,
+    Foam::volTensorField gradU,
+    int nodesNumber_,
+    int gradInterpolation_,
+    Foam::vectorField cellCentres,
+    Foam::vector Bi
+);
 
 float posInTableUref2(
     int posI,

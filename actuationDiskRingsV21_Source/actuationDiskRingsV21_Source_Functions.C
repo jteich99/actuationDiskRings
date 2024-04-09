@@ -6,6 +6,85 @@
 #include "fvCFD.H"
 #include <map>
 
+vector getNodePosition(
+    scalar tita_n_Rad,
+    scalar rMed_r,
+    scalar yawRad,
+    vector diskPoint_,
+    int ring,
+    int numberRings_
+) {
+    scalar x_node = 0;
+    scalar y_node = 0;
+    scalar z_node = 0;
+
+    if (ring != numberRings_)
+    {
+        x_node = -1 * rMed_r * std::sin(tita_n_Rad) * std::sin(yawRad);
+        y_node = rMed_r * std::sin(tita_n_Rad) * std::cos(yawRad);
+        z_node = rMed_r * std::cos(tita_n_Rad);
+    }
+
+    x_node += diskPoint_[0];
+    y_node += diskPoint_[1];
+    z_node += diskPoint_[2];
+
+    vector Bi = vector(x_node, y_node, z_node);
+    return Bi;
+}
+
+vector getNodeVelocity(
+    List<label> nodeCellID_,
+    int total_nodes_counter,
+    int ring,
+    int numberRings_,
+    vectorField U,
+    volTensorField gradU,
+    int nodesNumber_,
+    int gradInterpolation_,
+    vectorField cellCentres,
+    vector Bi
+) {
+    Info << "into getNodeVelocity function for node " << total_nodes_counter << endl;
+    vector U_dPointCells = vector(1000, 1000, 1000);
+    if (ring == numberRings_)
+    {
+        if (nodeCellID_[nodesNumber_-1] != -1) //if the closer cell is in this procesor
+        {
+            U_dPointCells =  U[nodeCellID_[nodesNumber_-1]];
+        }
+    }
+    else
+    {
+        if (nodeCellID_[total_nodes_counter] != -1) // if the closer cell is in this procesor
+        {
+            U_dPointCells = U[nodeCellID_[total_nodes_counter]];
+        }
+    }
+    if ( 
+        (gradInterpolation_ == 1) and
+        (ring != numberRings_)
+    ){
+        // Info << "cell center = " << mesh().cellCentres()[nodeCellID_[total_nodes_counter]] << endl;
+        // Info << "cell center = " << cells[nodeCellID_[total_nodes_counter]] << endl;
+        // vector dx = Bi - mesh().cellCentres()[nodeCellID_[total_nodes_counter]];
+        vector dx = Bi - cellCentres[nodeCellID_[total_nodes_counter]];
+        vector dU = dx & gradU[nodeCellID_[total_nodes_counter]];
+        U_dPointCells += dU;
+    }
+    reduce(U_dPointCells, minOp<vector>()); // take only normal values of U
+    if (mag(U_dPointCells) > 1000) // We add a flag in case it does not find a cell near
+    {
+        U_dPointCells = vector(10, 0, 0);
+        Info << "OpenFOAM cell Not found" << endl;
+        // Info << "ring: " << ring << endl;
+        // Info << "node: " << total_nodes_counter << endl;
+        // Info << "radius: " << radius << endl;
+    }
+    Info << "out of getNodeVelocity function for node " << total_nodes_counter << endl;
+    return U_dPointCells;
+}
+
 float posInTableUref2(
     int posI,
     List<scalar> Uref2List_,

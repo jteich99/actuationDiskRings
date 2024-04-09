@@ -115,6 +115,7 @@ scalar Foam::fv::actuationDiskRingsV21_Source::addactuationDiskRings_AxialInerti
     // calculate the radius
     scalar maxR = sqrt(diskArea_ / M_PI);
 
+    vectorField cellCentres = mesh().cellCentres();
     //----- YAW ROTATION OPTION  -------------------------------------------------------------
     vector uniDiskDir = vector(0, 0, 0);
     scalar yawRad;
@@ -368,7 +369,10 @@ scalar Foam::fv::actuationDiskRingsV21_Source::addactuationDiskRings_AxialInerti
         q0 = ( sqrt(16 * pow(lambda,2) * pow(a2,2) + 8 * a1 * Ct) - 4 * lambda * a2 ) / ( 4 * a1 );
         Info << "q0 = " << q0 << endl; 
     } 
-    else if (UrefCalculationMethod_ == 2) {
+    else if (
+        (UrefCalculationMethod_ == 2) or
+        (UrefCalculationMethod_ == 3)
+    ) {
         // Analytic from Sorensen 2020
         // Ct = from UdAvg and UrefPrevious
         UrefYaw = UrefPrevious;
@@ -416,11 +420,60 @@ scalar Foam::fv::actuationDiskRingsV21_Source::addactuationDiskRings_AxialInerti
         Info << "omega = " << omega << endl;
         pitch = 0;
 
-        // q0 calculation considering uniform inflow
-        // factores a1 y a2 para calcular q0 del metodo analitico
-        a1 = a1Function( rootDistance_, lambda_);
-        a2 = a2Function( rootDistance_, lambda_);
-        q0 = ( sqrt(16 * pow(lambda_,2) * pow(a2,2) + 8 * a1 * Ct) - 4 * lambda_ * a2 ) / ( 4 * a1 );
+        if (UrefCalculationMethod_ == 2) {
+            // q0 calculation considering uniform inflow
+            // factores a1 y a2 para calcular q0 del metodo analitico
+            a1 = a1Function( rootDistance_, lambda_);
+            a2 = a2Function( rootDistance_, lambda_);
+            q0 = ( sqrt(16 * pow(lambda_,2) * pow(a2,2) + 8 * a1 * Ct) - 4 * lambda_ * a2 ) / ( 4 * a1 );
+        }
+        else if (UrefCalculationMethod_ == 3) {
+            // q0 calculation for generalized inflow
+            // loop through nodes to calculate the generalized a1 and a2
+            a1 = 0;
+            a2 = 0;
+            float gNode;
+            float FNode;
+            float xNode;
+            float UrefNode;
+            float nodeArea;
+            scalar tita_r = 0;
+            scalar tita_n_Rad = 0;
+            scalar rMed_r = 0;
+            scalar total_nodes_counter = 0;
+            for (int ring = 0; ring <= (numberRings_); ring = ring + 1)
+            {
+                tita_r = ringTitaList_[ring];
+                rMed_r = ringrMedList_[ring];
+                for (int nodeIterator = 1; nodeIterator <= ringNodesList_[ring]; nodeIterator += 1)
+                {
+                    tita_n_Rad = 2 * M_PI * (tita_r * (nodeIterator - 1)) / 360;
+
+                    vector Bi = getNodePosition(tita_n_Rad, rMed_r, yawRad, diskPoint_, ring, numberRings_);
+                    float radius = mag(diskPoint_ - Bi);
+
+                    vector U_dPointCells = getNodeVelocity(nodeCellID_, total_nodes_counter, ring, numberRings_, U, gradU, nodesNumber_, gradInterpolation_, cellCentres, Bi); 
+                    total_nodes_counter += 1;
+                    
+                    xNode = rMed_r / maxR_;
+                    gNode = gFunction(xNode, rootDistance_);  
+                    FNode = FFunction(xNode, lambda_);  
+                    nodeArea = ringAreaList_[ring];
+                    UrefNode = 2 * mag(U_dPointCells) / (1 + sqrt(1 - Ct));
+                    a1 += pow(UrefNode, 2) * gNode * FNode * nodeArea;
+                    if (xNode > 0) {
+                        a2 += pow(UrefNode, 2) * pow( gNode * FNode / xNode , 2) * nodeArea /2;
+                    }
+                }
+            }
+            Info << "a1 = " << a1 << endl; 
+            Info << "a2 = " << a2 << endl; 
+            float density = 1.225;
+            UrefYaw = 2 * mag(U_dCellsYaw) / (1 + sqrt(1 - Ct));
+
+            float thrust = Ct * 0.5 * M_PI * density * pow(maxR_, 2) * pow(UrefYaw, 2);
+            q0 = ( - lambda_ * a1 + sqrt( pow(lambda_ * a1,2) + 4 * a2 * ( thrust / density ) ) )/(2 * a2);
+        }
 
         Info << "q0 = " << q0 << endl; 
 
@@ -444,51 +497,12 @@ scalar Foam::fv::actuationDiskRingsV21_Source::addactuationDiskRings_AxialInerti
             {
                 tita_n_Rad = 2 * M_PI * (tita_r * (nodeIterator - 1)) / 360;
 
-                scalar x_node = 0;
-                scalar y_node = 0;
-                scalar z_node = 0;
-
-                if (ring != numberRings_)
-                {
-                    x_node = -1 * rMed_r * sin(tita_n_Rad) * sin(yawRad);
-                    y_node = rMed_r * sin(tita_n_Rad) * cos(yawRad);
-                    z_node = rMed_r * cos(tita_n_Rad);
-                }
-
-                x_node += diskPoint_[0];
-                y_node += diskPoint_[1];
-                z_node += diskPoint_[2];
-
-                vector Bi = vector(x_node, y_node, z_node);
+                vector Bi = getNodePosition(tita_n_Rad, rMed_r, yawRad, diskPoint_, ring, numberRings_);
                 float radius = mag(diskPoint_ - Bi);
 
-                vector U_dPointCells = vector(1000, 1000, 1000);
-                // Info << "ring " << ring << endl;
-                // Info << "nodeIterator " << nodeIterator << endl;
-                // Info << "nodeCellID_[total_nodes_counter] = " << nodeCellID_[total_nodes_counter] << endl; 
-                // Info << "total_nodes_counter = " << total_nodes_counter << endl; 
+                // vector U_dPointCells = vector(1000, 1000, 1000);
 
-                if (nodeCellID_[total_nodes_counter] != -1) // if the closer cell is in this procesor
-                {
-                    if (ring == numberRings_)
-                    {
-                        U_dPointCells =  U[nodeCellID_[nodesNumber_-1]];
-                    }
-                    else
-                    {
-                        U_dPointCells = U[nodeCellID_[total_nodes_counter]];
-                    }
 
-                    // if (gradInterpolation_ == 1)
-                    if ( 
-                        (gradInterpolation_ == 1) and
-                        (ring != numberRings_)
-                    ){
-                        vector dx = Bi - mesh().cellCentres()[nodeCellID_[total_nodes_counter]];
-                        vector dU = dx & gradU[nodeCellID_[total_nodes_counter]];
-                        U_dPointCells += dU;
-                    }
-                }
 
                 // if (ring == numberRings_)
                 // {
@@ -513,18 +527,8 @@ scalar Foam::fv::actuationDiskRingsV21_Source::addactuationDiskRings_AxialInerti
                 //     U_dPointCells += dU;
                 // }
 
-                reduce(U_dPointCells, minOp<vector>()); // take only normal values of U
 
-                if (mag(U_dPointCells) > 1000) // We add a flag in case it does not find a cell near
-                {
-                    U_dPointCells = vector(10, 0, 0);
-                    Info << "OpenFOAM cell Not found" << endl;
-                    Info << "ring: " << ring << endl;
-                    Info << "node: " << total_nodes_counter << endl;
-                    Info << "radius: " << radius << endl;
-                }
-                // Info << "U_dPointCells = " << U_dPointCells << endl;
-
+                vector U_dPointCells = getNodeVelocity(nodeCellID_, total_nodes_counter, ring, numberRings_, U, gradU, nodesNumber_, gradInterpolation_, cellCentres, Bi); 
                 total_nodes_counter += 1;
 
                 // vector U_dPointCells = vector(1000, 1000, 1000);
@@ -690,55 +694,11 @@ scalar Foam::fv::actuationDiskRingsV21_Source::addactuationDiskRings_AxialInerti
             {
                 tita_n_Rad = 2 * M_PI * (tita_r * (nodeIterator - 1)) / 360;
 
-                scalar x_node = 0;
-                scalar y_node = 0;
-                scalar z_node = 0;
-
-                if (ring != numberRings_)
-                {
-                    x_node = -1 * rMed_r * sin(tita_n_Rad) * sin(yawRad);
-                    y_node = rMed_r * sin(tita_n_Rad) * cos(yawRad);
-                    z_node = rMed_r * cos(tita_n_Rad);
-                }
-
-                x_node += diskPoint_[0];
-                y_node += diskPoint_[1];
-                z_node += diskPoint_[2];
-
-                vector Bi = vector(x_node, y_node, z_node);
+                vector Bi = getNodePosition(tita_n_Rad, rMed_r, yawRad, diskPoint_, ring, numberRings_);
                 float radius = mag(diskPoint_ - Bi);
 
-                vector U_dPointCells = vector(1000, 1000, 1000);
-                if (nodeCellID_[total_nodes_counter] != -1) // if the closer cell is in this procesor
-                {
-                    if (ring == numberRings_)
-                    {
-                        U_dPointCells =  U[nodeCellID_[nodesNumber_-1]];
-                    }
-                    else
-                    {
-                        U_dPointCells = U[nodeCellID_[total_nodes_counter]];
-                    }
 
-                    // if (gradInterpolation_ == 1)
-                    if ( 
-                        (gradInterpolation_ == 1) and
-                        (ring != numberRings_)
-                    ){
-                        vector dx = Bi - mesh().cellCentres()[nodeCellID_[total_nodes_counter]];
-                        vector dU = dx & gradU[nodeCellID_[total_nodes_counter]];
-                        U_dPointCells += dU;
-                    }
-                }
-                reduce(U_dPointCells, minOp<vector>()); // take only normal values of U
-                if (mag(U_dPointCells) > 1000) // We add a flag in case it does not find a cell near
-                {
-                    U_dPointCells = vector(10, 0, 0);
-                    Info << "OpenFOAM cell Not found" << endl;
-                    Info << "ring: " << ring << endl;
-                    Info << "node: " << total_nodes_counter << endl;
-                    Info << "radius: " << radius << endl;
-                }
+                vector U_dPointCells = getNodeVelocity(nodeCellID_, total_nodes_counter, ring, numberRings_, U, gradU, nodesNumber_, gradInterpolation_, cellCentres, Bi); 
                 total_nodes_counter += 1;
                 
                 xNode = rMed_r / maxR_;
@@ -777,58 +737,14 @@ scalar Foam::fv::actuationDiskRingsV21_Source::addactuationDiskRings_AxialInerti
             {
                 tita_n_Rad = 2 * M_PI * (tita_r * (nodeIterator - 1)) / 360;
 
-                scalar x_node = 0;
-                scalar y_node = 0;
-                scalar z_node = 0;
-
-                if (ring != numberRings_)
-                {
-                    x_node = -1 * rMed_r * sin(tita_n_Rad) * sin(yawRad);
-                    y_node = rMed_r * sin(tita_n_Rad) * cos(yawRad);
-                    z_node = rMed_r * cos(tita_n_Rad);
-                }
-
-                x_node += diskPoint_[0];
-                y_node += diskPoint_[1];
-                z_node += diskPoint_[2];
-
-                vector Bi = vector(x_node, y_node, z_node);
+                vector Bi = getNodePosition(tita_n_Rad, rMed_r, yawRad, diskPoint_, ring, numberRings_);
                 float radius = mag(diskPoint_ - Bi);
 
-                vector U_dPointCells = vector(1000, 1000, 1000);
 
-                if (nodeCellID_[total_nodes_counter] != -1) // if the closer cell is in this procesor
-                {
-                    if (ring == numberRings_)
-                    {
-                        U_dPointCells =  U[nodeCellID_[nodesNumber_-1]];
-                    }
-                    else
-                    {
-                        U_dPointCells = U[nodeCellID_[total_nodes_counter]];
-                    }
 
-                    // if (gradInterpolation_ == 1)
-                    if ( 
-                        (gradInterpolation_ == 1) and
-                        (ring != numberRings_)
-                    ){
-                        vector dx = Bi - mesh().cellCentres()[nodeCellID_[total_nodes_counter]];
-                        vector dU = dx & gradU[nodeCellID_[total_nodes_counter]];
-                        U_dPointCells += dU;
-                    }
-                }
 
-                reduce(U_dPointCells, minOp<vector>()); // take only normal values of U
 
-                if (mag(U_dPointCells) > 1000) // We add a flag in case it does not find a cell near
-                {
-                    U_dPointCells = vector(10, 0, 0);
-                    Info << "OpenFOAM cell Not found" << endl;
-                    Info << "ring: " << ring << endl;
-                    Info << "node: " << total_nodes_counter << endl;
-                    Info << "radius: " << radius << endl;
-                }
+                vector U_dPointCells = getNodeVelocity(nodeCellID_, total_nodes_counter, ring, numberRings_, U, gradU, nodesNumber_, gradInterpolation_, cellCentres, Bi); 
 
                 total_nodes_counter += 1;
                 UavgRing += mag(U_dPointCells); 
@@ -997,22 +913,10 @@ scalar Foam::fv::actuationDiskRingsV21_Source::addactuationDiskRings_AxialInerti
             //----- Calculate node position ------------------------------------------
             tita_n_Rad = 2 * M_PI * (tita_r * (nodeIterator - 1)) / 360;
 
-            scalar x_node = 0;
-            scalar y_node = 0;
-            scalar z_node = 0;
-
-            // position of the node considering disk center = (0,0,0)
-            if (ring != numberRings_)
-            {
-                x_node = -1 * rMed_r * sin(tita_n_Rad) * sin(yawRad);
-                y_node = rMed_r * sin(tita_n_Rad) * cos(yawRad);
-                z_node = rMed_r * cos(tita_n_Rad);
-            }
-
-            // move to turbine position
-            x_node += diskPoint_[0];
-            y_node += diskPoint_[1];
-            z_node += diskPoint_[2];
+            vector Bi = getNodePosition(tita_n_Rad, rMed_r, yawRad, diskPoint_, ring, numberRings_);
+            scalar x_node = Bi[0];
+            scalar y_node = Bi[1];
+            scalar z_node = Bi[2];
             //----- End of calculate node position ------------------------------------------
 
             //----- Calculate radial and tangential vectors ------------------------------------------
@@ -1048,7 +952,6 @@ scalar Foam::fv::actuationDiskRingsV21_Source::addactuationDiskRings_AxialInerti
                              vector_n[2], vector_t[2], vector_r[2]);
             //----- End of calculate tensor to transfor cartesian coordinates to cylindrical coordinates -------------------------
 
-            vector Bi = vector(x_node, y_node, z_node);
 
             radius = mag(diskPoint_ - Bi);
 
@@ -1060,73 +963,18 @@ scalar Foam::fv::actuationDiskRingsV21_Source::addactuationDiskRings_AxialInerti
 
             //----- Calculate velocity in node ------------------------------------------
             // calculate velocity in node
-            vector U_dPointCells = vector(1000, 1000, 1000);
-            // Info << "ring " << ring << endl;
-            // Info << "nodeIterator " << nodeIterator << endl;
-            // Info << "nodeCellID_[total_nodes_counter] = " << nodeCellID_[total_nodes_counter] << endl; 
-            // Info << "total_nodes_counter = " << total_nodes_counter << endl; 
-            
-            if (nodeCellID_[total_nodes_counter] != -1) // if the closer cell is in this procesor
-            {
-                if (ring == numberRings_)
-                {
-                    U_dPointCells =  U[nodeCellID_[nodesNumber_-1]];
-                }
-                else
-                {
-                    U_dPointCells = U[nodeCellID_[total_nodes_counter]];
-                }
-
-                // if (gradInterpolation_ == 1)
-                if ( 
-                    (gradInterpolation_ == 1) and
-                    (ring != numberRings_)
-                ){
-                    vector dx = Bi - mesh().cellCentres()[nodeCellID_[total_nodes_counter]];
-                    vector dU = dx & gradU[nodeCellID_[total_nodes_counter]];
-                    U_dPointCells += dU;
-                }
-            }
-
-            // Info << "U_dPointCells = " << U_dPointCells << endl;
-
-            // if (ring == numberRings_)
             // {
-            //     if (nodeCellID_[nodesNumber_-1] != -1) //if the closer cell is in this procesor
             //     {
             //         U_dPointCells =  U[nodeCellID_[nodesNumber_-1]];
             //     }
-            // }
-            // else
-            // {
-            //     if (nodeCellID_[total_nodes_counter] != -1) // if the closer cell is in this procesor
             //     {
             //         U_dPointCells = U[nodeCellID_[total_nodes_counter]];
             //     }
+
             // }
 
-            // // if (gradInterpolation_ == 1)
-            // if ( 
-            //     (gradInterpolation_ == 1) and
-            //     (ring != numberRings_)
-            // ){
-            //     vector dx = Bi - mesh().cellCentres()[nodeCellID_[total_nodes_counter]];
-            //     vector dU = dx & gradU[nodeCellID_[total_nodes_counter]];
-            //     U_dPointCells += dU;
-            // }
-            
-            reduce(U_dPointCells, minOp<vector>()); // take only normal values of U
 
-            if (mag(U_dPointCells) > 1000) // We add a flag in case it does not find a cell near
-            {
-                U_dPointCells = vector(10, 0, 0);
-                Info << "OpenFOAM cell Not found" << endl;
-                Info << "ring: " << ring << endl;
-                Info << "node: " << total_nodes_counter << endl;
-                Info << "radius: " << radius << endl;
-            }
-            // Info << "U_dPointCells = " << U_dPointCells << endl;
-
+            vector U_dPointCells = getNodeVelocity(nodeCellID_, total_nodes_counter, ring, numberRings_, U, gradU, nodesNumber_, gradInterpolation_, cellCentres, Bi); 
             total_nodes_counter += 1;
 
             // change of coordinate system

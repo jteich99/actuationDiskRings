@@ -135,11 +135,24 @@ Foam::fv::actuationDiskRingsV21_Source::actuationDiskRingsV21_Source(
       // tipFactor_(readScalar(coeffs_.lookup("tipFactor"))),
       nodesCellsRatio_(readScalar(coeffs_.lookup("nodesCellsRatio"))),
       rThicknessCellsizeRatio_(readScalar(coeffs_.lookup("rThicknessCellsizeRatio"))),
+      powerCurve_table_(coeffs_.lookup("powerCurve_table")), 
       UdAvg_table_(coeffs_.lookup("UdAvg_table")), // for adaptation
       Udi_table_(coeffs_.lookup("Udi_table")),     // for adaptation
       gradInterpolation_(readScalar(coeffs_.lookup("gradInterpolation"))),
       diskCellId_(-1)
 {
+    //---define list using the table UdAvg_table
+    UrefPowerCurveList_.setSize(powerCurve_table_.size());
+    CtPowerCurveList_.setSize(powerCurve_table_.size());
+    CpPowerCurveList_.setSize(powerCurve_table_.size());
+
+    forAll(powerCurve_table_, i)
+    {
+        UrefPowerCurveList_[i] = powerCurve_table_[i][0];
+        CtPowerCurveList_[i] = powerCurve_table_[i][1];
+        CpPowerCurveList_[i] = powerCurve_table_[i][2];
+    }
+
     //---define list using the table UdAvg_table
     UrefList_.setSize(UdAvg_table_.size());
     omegaList_.setSize(UdAvg_table_.size());
