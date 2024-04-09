@@ -519,6 +519,36 @@ namespace Foam
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
+float posInTableUref2(
+    int posI,
+    Foam::List<Foam::scalar> Uref2List_,
+    Foam::List<Foam::scalar> UrefList_,
+    Foam::List<Foam::scalar> rList_,
+    Foam::scalar rtable,
+    Foam::vector U_dPointCells_ntr,
+    Foam::List<Foam::scalar> UdiList_
+);
+
+float gFunction(
+    float x,
+    float rootDistance
+);
+
+float FFunction(
+    float x,
+    float lambda
+);
+
+float a1Function(
+    float rootDistance,
+    float lambda
+);
+
+float a2Function(
+    float rootDistance,
+    float lambda
+);
+
 #ifdef NoRepository
 #include "actuationDiskRingsV21_SourceTemplates.C"
 #endif
