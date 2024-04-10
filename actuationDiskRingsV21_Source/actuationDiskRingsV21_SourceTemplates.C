@@ -477,6 +477,13 @@ scalar Foam::fv::actuationDiskRingsV21_Source::addactuationDiskRings_AxialInerti
             UrefYawOld = UrefYaw;
         }
 
+        // Clipping of UrefYaw variation from power curve interpolation
+        // (didn't prove to lower convergence iterations)
+        // if (fabs( UrefYaw / UrefPrevious - 1 ) < 0.000001) {
+        //     Info << "Using previous Uref, because difference < 0.001% for better convergence" << endl;
+        //     UrefYaw = UrefPrevious;
+        //     Ct = 4 * (mag(U_dCells) / UrefYaw) * ( 1 - (mag(U_dCells) / UrefYaw) );
+        // }
         
         Info << "UrefYaw = " << UrefYaw << endl;
         Info << "Ct = " << Ct << endl;
