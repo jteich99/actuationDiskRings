@@ -45,7 +45,6 @@ vector getNodeVelocity(
     vectorField cellCentres,
     vector Bi
 ) {
-    Info << "into getNodeVelocity function for node " << total_nodes_counter << endl;
     vector U_dPointCells = vector(1000, 1000, 1000);
     if (ring == numberRings_)
     {
@@ -81,7 +80,6 @@ vector getNodeVelocity(
         // Info << "node: " << total_nodes_counter << endl;
         // Info << "radius: " << radius << endl;
     }
-    Info << "out of getNodeVelocity function for node " << total_nodes_counter << endl;
     return U_dPointCells;
 }
 
