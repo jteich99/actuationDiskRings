@@ -116,6 +116,7 @@ scalar Foam::fv::actuationDiskRingsV21_Source::addactuationDiskRings_AxialInerti
     scalar maxR = sqrt(diskArea_ / M_PI);
 
     vectorField cellCentres = mesh().cellCentres();
+
     //----- YAW ROTATION OPTION  -------------------------------------------------------------
     vector uniDiskDir = vector(0, 0, 0);
     scalar yawRad;
@@ -196,7 +197,7 @@ scalar Foam::fv::actuationDiskRingsV21_Source::addactuationDiskRings_AxialInerti
             cellsDisc.append(cells[c]);
         }
     }
-    // Info <<"total cells in the procesor: "<<cellsDisc.size()<<endl;
+    // Pout <<"total cells in the procesor: "<<cellsDisc.size()<<endl;
 
     //------------------wight of the AD cells depending distance from plane and sphere-----
 
@@ -325,10 +326,13 @@ scalar Foam::fv::actuationDiskRingsV21_Source::addactuationDiskRings_AxialInerti
             vector Bi = getNodePosition(tita_n_Rad, rMed_r, yawRad, diskPoint_, ring, numberRings_);
 
             // get velocity in node
+            // vector U_dPointCells = getNodeVelocity(nodeCellID_, total_nodes_counter, ring, numberRings_, U, gradU, nodesNumber_, gradInterpolation_, cellCentres, Bi);
 
+            // it is faster codewise to directly execute the code rather than call the function
             vector U_dPointCells = vector(1000, 1000, 1000);
             if (nodeCellID_[total_nodes_counter] != -1) // if the closer cell is in this procesor
             {
+                // medir la velocidad en el nodo
                 if (ring == numberRings_)
                 {
                     U_dPointCells =  U[nodeCellID_[nodesNumber_-1]];
@@ -338,7 +342,6 @@ scalar Foam::fv::actuationDiskRingsV21_Source::addactuationDiskRings_AxialInerti
                     U_dPointCells = U[nodeCellID_[total_nodes_counter]];
                 }
             }
-
             if ( 
                 (gradInterpolation_ == 1) and
                 (ring != numberRings_)
@@ -350,7 +353,7 @@ scalar Foam::fv::actuationDiskRingsV21_Source::addactuationDiskRings_AxialInerti
             reduce(U_dPointCells, minOp<vector>()); // take only normal values of U
             if (mag(U_dPointCells) > 1000) // We add a flag in case it does not find a cell near
             {
-                U_dPointCells = vector(10, 0, 0);
+                // U_dPointCells = vector(10, 0, 0);
                 Info << "OpenFOAM cell Not found" << endl;
                 // Info << "ring: " << ring << endl;
                 // Info << "node: " << total_nodes_counter << endl;
@@ -700,8 +703,8 @@ scalar Foam::fv::actuationDiskRingsV21_Source::addactuationDiskRings_AxialInerti
     float fn_point = GREAT;
     float ft1 = GREAT;
     float ft2 = GREAT;
-    float ft_point = GREAT;
     scalar rtable = 0;
+    float ft_point = GREAT;
     scalar posr = 0;
     scalar lastPos = 0;
     float x_point; // x_point = radius_point / maxR
@@ -826,15 +829,31 @@ scalar Foam::fv::actuationDiskRingsV21_Source::addactuationDiskRings_AxialInerti
                 if (forceDistributionMethod_==0) { // no force distribution. Forces are applied directly in cell that contains the node
 
                 }
-                else if (forceDistributionMethod_==1) { // force distribution previously implented in this code
+                else if (forceDistributionMethod_==1) { 
+                    // force distribution previously implented in this code
                     weightCells[cellsDisc[c]] = (1 / (En * Et * Er * pow(sqrt(M_PI), 3))) *
                                             exp(-1 * (pow(dn / En, 2) + pow(dt / Et, 2) + pow(dr / Er, 2)));
                 }
-                else if (forceDistributionMethod_==2) { // force distribution as proposed in Mikkelsen 2003
+                else if (forceDistributionMethod_==2) { 
+                    // force distribution as proposed in Mikkelsen 2003
                     weightCells[cellsDisc[c]] = (1 / (pow(E, 3) * pow(sqrt(M_PI), 3))) *
                                             exp(-1 * ( (sqrt(pow(dn,2) + pow(dr,2) + pow(dt,2))) / (E) ) );
                 }
-                // Info << "weight of cell calculated" << endl;
+                else if (forceDistributionMethod_==3) {  
+                    // force distribution with delta function of Li 2022
+                    float diskCellSize = 0.5 * 2 * maxR_ / cellSize_;
+                    float d_cellCentre_node = mag(Pi_ntr - Bi_ntr);
+                    float d_adim = d_cellCentre_node / diskCellSize;
+                    if (d_adim <= 0.5) {
+                        weightCells[cellsDisc[c]] = 3/8 + M_PI/32 - pow(d_adim,2)/4;
+                    } else if (d_adim <= 1.5) {
+                        weightCells[cellsDisc[c]] = 1/4 + (1 - d_adim) * sqrt( -2 + 8 * d_adim - 4 * pow(d_adim,2) ) / 8 - asin(std::sqrt(2) * (d_adim - 1)) / 8;
+                    } else if (d_adim <= 2.5) {
+                        weightCells[cellsDisc[c]] = 17/16 + M_PI/64 - 3 * d_adim / 4 - pow(d_adim,2) / 8 + (d_adim - 2) * sqrt( -14 + 16 * d_adim - 4 * pow(d_adim,2)) / 16 + asin( std::sqrt(2) * (d_adim - 2) ) / 16;
+                    } else {
+                        weightCells[cellsDisc[c]] = 0;
+                    }
+                }
 
                 // distance of the cell center from sphere
                 scalar dSphere = mag(mesh().cellCentres()[cellsDisc[c]] - diskPoint_);
