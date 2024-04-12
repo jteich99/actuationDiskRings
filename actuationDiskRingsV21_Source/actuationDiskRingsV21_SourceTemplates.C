@@ -341,14 +341,14 @@ scalar Foam::fv::actuationDiskRingsV21_Source::addactuationDiskRings_AxialInerti
                 {
                     U_dPointCells = U[nodeCellID_[total_nodes_counter]];
                 }
-            }
-            if ( 
-                (gradInterpolation_ == 1) and
-                (ring != numberRings_)
-            ){
-                vector dx = Bi - cellCentres[nodeCellID_[total_nodes_counter]];
-                vector dU = dx & gradU[nodeCellID_[total_nodes_counter]];
-                U_dPointCells += dU;
+                if ( 
+                    (gradInterpolation_ == 1) and
+                    (ring != numberRings_)
+                ){
+                    vector dx = Bi - cellCentres[nodeCellID_[total_nodes_counter]];
+                    vector dU = dx & gradU[nodeCellID_[total_nodes_counter]];
+                    U_dPointCells += dU;
+                }
             }
             reduce(U_dPointCells, minOp<vector>()); // take only normal values of U
             if (mag(U_dPointCells) > 1000) // We add a flag in case it does not find a cell near
@@ -640,7 +640,7 @@ scalar Foam::fv::actuationDiskRingsV21_Source::addactuationDiskRings_AxialInerti
         Cp = 4 * lambda_ * q0 * integral;
         Info << "Cp = " << Cp << endl;
         
-        UrefYaw = 2 * mag(U_dCellsYaw) / (1 + sqrt(1 - Ct));
+        // UrefYaw = 2 * mag(U_dCellsYaw) / (1 + sqrt(1 - Ct));
     } 
 
     //----- Calculate Thrust, Power and Torque------------------------------------------
