@@ -501,12 +501,94 @@ scalar Foam::fv::actuationDiskRingsV21_Source::addactuationDiskRings_AxialInerti
             a1 = a1Function( rootDistance_, lambda_);
             a2 = a2Function( rootDistance_, lambda_);
             q0 = ( sqrt(16 * pow(lambda_,2) * pow(a2,2) + 8 * a1 * Ct) - 4 * lambda_ * a2 ) / ( 4 * a1 );
+            // Cp calculation
+            scalar tita_r = 0;
+            scalar tita_n_Rad = 0;
+            scalar rMed_r = 0;
+            scalar total_nodes_counter = 0;
+            total_nodes_counter = 0;
+            for (int ring = 0; ring <= (numberRings_); ring = ring + 1)
+            {
+                tita_r = ringTitaList_[ring];
+                rMed_r = ringrMedList_[ring];
+
+                // inicializar velocidad promedio del anillo
+                float UavgRing = 0;
+                for (int nodeIterator = 1; nodeIterator <= ringNodesList_[ring]; nodeIterator += 1)
+                {
+                    tita_n_Rad = 2 * M_PI * (tita_r * (nodeIterator - 1)) / 360;
+
+                    vector Bi = getNodePosition(tita_n_Rad, rMed_r, yawRad, diskPoint_, ring, numberRings_);
+                    float radius = mag(diskPoint_ - Bi);
+
+                    vector U_dPointCells = U_dNodes[total_nodes_counter];
+
+                    total_nodes_counter += 1;
+
+                    UavgRing += mag(U_dPointCells); 
+                }
+                UavgRing /= ringNodesList_[ring];
+                // dividir la suma de velocidades del anillo por la cantidad de nodos en el anillo
+                // apendar a la lista de velocidades promedio de anillo
+                UavgRings.append(UavgRing);
+            }
+
+            float resolution = 100;
+            float integral = 0; 
+            int ringCounter = 0;
+            float gPrev;
+            float FPrev;
+            float funcPrev;
+            float g;
+            float F;
+            float func;
+            float Udx;
+            float UdxPrev;
+            float U0x;
+            float U0xPrev;
+            float r;
+            for (float x = 1/resolution; x < 1; x += 1/resolution) {
+                Udx = UavgRings[ringCounter]; 
+                // Info << "Udx = " << Udx << endl; 
+                // Info << "(1 + sqrt(1 - Ct)) = " << (1 + sqrt(1 - Ct)) << endl;
+                U0x = 2 * Udx / (1 + sqrt(1 - Ct));
+
+                if (ringrMedList_[ringCounter] - x < 1/resolution) {
+                    UdxPrev = UavgRings[ringCounter - 1]; 
+                } else {
+                    UdxPrev = UavgRings[ringCounter]; 
+                }
+                U0xPrev = 2 * UdxPrev / (1 + sqrt(1 - Ct));
+
+                g = gFunction(x, rootDistance_);
+                F = FFunction(x, lambda_);
+
+                gPrev = gFunction(x - 1/resolution, rootDistance_);
+                FPrev = FFunction(x - 1/resolution, lambda_);
+
+                func = (Udx/U0x) * g * F * x;
+                funcPrev = (UdxPrev/U0xPrev) * gPrev * FPrev * (x - 1/resolution);
+                 
+                integral += (1/resolution) * (func + funcPrev)/2;
+
+                r = x * maxR_;
+                // Info << "r = " << r << "; ringCounter = " << ringCounter << endl;
+
+                if (
+                    (x + 1/resolution > ringrMedList_[ringCounter] / maxR_) and
+                    ( ringCounter < numberRings_ )
+                ) {
+                    ringCounter += 1;
+                }
+            }
+            Cp = 4 * lambda_ * q0 * integral;
         }
         else if (UrefCalculationMethod_ == 3) {
             // q0 calculation for generalized inflow
             // loop through nodes to calculate the generalized a1 and a2
             a1 = 0;
             a2 = 0;
+            float Cp_sum = 0;
             float gNode;
             float FNode;
             float xNode;
@@ -540,112 +622,35 @@ scalar Foam::fv::actuationDiskRingsV21_Source::addactuationDiskRings_AxialInerti
                     if (xNode > 0) {
                         a2 += pow(UrefNode, 2) * pow( gNode * FNode / xNode , 2) * nodeArea /2;
                     }
+                    Cp_sum += UrefNode * mag(U_dPointCells) * gNode * FNode * nodeArea;
+                    Info << "" << endl;
                 }
             }
             Info << "a1 = " << a1 << endl; 
             Info << "a2 = " << a2 << endl; 
             float density = 1.225;
 
-            float thrust = Ct * 0.5 * M_PI * density * pow(maxR_, 2) * pow(UrefYaw, 2);
+            float nominalThrust = 0.5 * density * diskArea_ * pow(UrefYaw,2);
+            float thrust = Ct * nominalThrust;
             q0 = ( - lambda_ * a1 + sqrt( pow(lambda_ * a1,2) + 4 * a2 * ( thrust / density ) ) )/(2 * a2);
+
+            // Cp calculation
+            // float nominalPower = 0.5 * density * M_PI * pow(maxR_,2) * pow(UrefYaw,3);
+            float nominalPower = 0.5 * density * diskArea_ * pow(UrefYaw,3);
+            float realPower = omega * maxR_ * density * q0 * Cp_sum ;
+            // float realPower = omega * pow(maxR_,3) * density * q0 * Cp_sum ;
+            Cp = realPower / nominalPower;
         }
 
         Info << "q0 = " << q0 << endl; 
-
-        // con Udi saco U0i, y el promedio de U0i es Uref
-        // porque se vuelvo a sacr Uref con el Ct que calcule voy a obtener de nuevo UrefPrevious porque son la misma expresion
-        // Cp calculation
-        scalar tita_r = 0;
-        scalar tita_n_Rad = 0;
-        scalar rMed_r = 0;
-        scalar total_nodes_counter = 0;
-        total_nodes_counter = 0;
-        for (int ring = 0; ring <= (numberRings_); ring = ring + 1)
-        {
-            // Info << "inside ring loop. ring " << ring << endl;
-            tita_r = ringTitaList_[ring];
-            rMed_r = ringrMedList_[ring];
-
-            // inicializar velocidad promedio del anillo
-            float UavgRing = 0;
-            for (int nodeIterator = 1; nodeIterator <= ringNodesList_[ring]; nodeIterator += 1)
-            {
-                tita_n_Rad = 2 * M_PI * (tita_r * (nodeIterator - 1)) / 360;
-
-                vector Bi = getNodePosition(tita_n_Rad, rMed_r, yawRad, diskPoint_, ring, numberRings_);
-                float radius = mag(diskPoint_ - Bi);
-
-                vector U_dPointCells = U_dNodes[total_nodes_counter];
-
-                total_nodes_counter += 1;
-
-                UavgRing += mag(U_dPointCells); 
-            }
-            UavgRing /= ringNodesList_[ring];
-            // dividir la suma de velocidades del anillo por la cantidad de nodos en el anillo
-            // apendar a la lista de velocidades promedio de anillo
-            UavgRings.append(UavgRing);
-        }
-
-        float resolution = 100;
-        float integral = 0; 
-        int ringCounter = 0;
-        float gPrev;
-        float FPrev;
-        float funcPrev;
-        float g;
-        float F;
-        float func;
-        float Udx;
-        float UdxPrev;
-        float U0x;
-        float U0xPrev;
-        float r;
-        for (float x = 1/resolution; x < 1; x += 1/resolution) {
-            Udx = UavgRings[ringCounter]; 
-            // Info << "Udx = " << Udx << endl; 
-            // Info << "(1 + sqrt(1 - Ct)) = " << (1 + sqrt(1 - Ct)) << endl;
-            U0x = 2 * Udx / (1 + sqrt(1 - Ct));
-
-            if (ringrMedList_[ringCounter] - x < 1/resolution) {
-                UdxPrev = UavgRings[ringCounter - 1]; 
-            } else {
-                UdxPrev = UavgRings[ringCounter]; 
-            }
-            U0xPrev = 2 * UdxPrev / (1 + sqrt(1 - Ct));
-
-            g = gFunction(x, rootDistance_);
-            F = FFunction(x, lambda_);
-
-            gPrev = gFunction(x - 1/resolution, rootDistance_);
-            FPrev = FFunction(x - 1/resolution, lambda_);
-
-            func = (Udx/U0x) * g * F * x;
-            funcPrev = (UdxPrev/U0xPrev) * gPrev * FPrev * (x - 1/resolution);
-             
-            integral += (1/resolution) * (func + funcPrev)/2;
-
-            r = x * maxR_;
-            // Info << "r = " << r << "; ringCounter = " << ringCounter << endl;
-
-            if (
-                (x + 1/resolution > ringrMedList_[ringCounter] / maxR_) and
-                ( ringCounter < numberRings_ )
-            ) {
-                ringCounter += 1;
-            }
-        }
-        // reduce(integral, sumOp<float>());
-        // Info << "ok integral for Cp" << endl;
-        Cp = 4 * lambda_ * q0 * integral;
         Info << "Cp = " << Cp << endl;
-        
-        // UrefYaw = 2 * mag(U_dCellsYaw) / (1 + sqrt(1 - Ct));
     } 
 
     //----- Calculate Thrust, Power and Torque------------------------------------------
     float density_ = 1.225;
-    scalar upRho = 1; // Thrust
+    scalar upRho = 1; 
+
+    // Thrust
     float T = 0.50 * upRho * diskArea_ * pow(UrefYaw, 2) * Ct;
     Info << "Thrust fixed (with density): " << T * density_ << endl;
 
