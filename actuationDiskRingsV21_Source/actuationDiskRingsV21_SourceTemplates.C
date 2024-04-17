@@ -377,7 +377,11 @@ scalar Foam::fv::actuationDiskRingsV21_Source::addactuationDiskRings_AxialInerti
     scalar Cp = 0;
     float a1;
     float a2;
+    float a3;
+    float a4;
+    float a5;
     float q0;
+    float S0;
     DynamicList<float> UavgRings;
 
     if (UrefCalculationMethod_ == 1) {
@@ -433,7 +437,8 @@ scalar Foam::fv::actuationDiskRingsV21_Source::addactuationDiskRings_AxialInerti
     } 
     else if (
         (UrefCalculationMethod_ == 2) or
-        (UrefCalculationMethod_ == 3)
+        (UrefCalculationMethod_ == 3) or
+        (UrefCalculationMethod_ == 4)
     ) {
         // Initialize UrefYaw with UrefYaw from previous iteration
         UrefYaw = UrefPrevious;
@@ -506,7 +511,6 @@ scalar Foam::fv::actuationDiskRingsV21_Source::addactuationDiskRings_AxialInerti
             scalar tita_n_Rad = 0;
             scalar rMed_r = 0;
             scalar total_nodes_counter = 0;
-            total_nodes_counter = 0;
             for (int ring = 0; ring <= (numberRings_); ring = ring + 1)
             {
                 tita_r = ringTitaList_[ring];
@@ -634,7 +638,6 @@ scalar Foam::fv::actuationDiskRingsV21_Source::addactuationDiskRings_AxialInerti
                         a2 += 0.5 * pow(UrefNode, 2) * pow( gNode * FNode / xNode , 2) * nodeArea;
                     }
                     Cp_sum += UrefNode * mag(U_dPointCells) * gNode * FNode * nodeArea;
-                    Info << "" << endl;
                 }
             }
             Info << "a1 = " << a1 << endl; 
@@ -651,6 +654,127 @@ scalar Foam::fv::actuationDiskRingsV21_Source::addactuationDiskRings_AxialInerti
             float realPower = omega * maxR_ * density * q0 * Cp_sum ;
             // float realPower = omega * pow(maxR_,3) * density * q0 * Cp_sum ;
             Cp = realPower / nominalPower;
+        }
+        else if (UrefCalculationMethod_ == 4) {
+            a1 = 0;
+            a2 = 0;
+            a3 = 0;
+            a4 = 0;
+            a5 = 0;
+            float b0;
+            float b1;
+            float b2;
+            float Cp_sum = 0;
+            float density = 1.225;
+            float gNode;
+            float FNode;
+            float xNode;
+            float UrefNode;
+            float nodeArea;
+            scalar tita_r = 0;
+            scalar tita_n_Rad = 0;
+            scalar rMed_r = 0;
+
+            // q0 calculation 
+            scalar total_nodes_counter = 0;
+            for (int ring = 0; ring <= (numberRings_); ring = ring + 1)
+            {
+                tita_r = ringTitaList_[ring];
+                rMed_r = ringrMedList_[ring];
+                for (int nodeIterator = 1; nodeIterator <= ringNodesList_[ring]; nodeIterator += 1)
+                {
+                    tita_n_Rad = 2 * M_PI * (tita_r * (nodeIterator - 1)) / 360;
+
+                    vector Bi = getNodePosition(tita_n_Rad, rMed_r, yawRad, diskPoint_, ring, numberRings_);
+                    float radius = mag(diskPoint_ - Bi);
+
+                    vector U_dPointCells = U_dNodes[total_nodes_counter];
+                    tensor transform = getNodeTransformTensor(
+                        Bi,
+                        diskPoint_,
+                        uniDiskDir_
+                    );
+                    float phi = getNodePhiAngle(
+                        transform,
+                        U_dPointCells,
+                        radius,
+                        omega
+                    );
+
+                    total_nodes_counter += 1;
+                    
+                    xNode = rMed_r / maxR_;
+                    gNode = rootFactorFunction(rootFactor_, xNode, rootDistance_, phi);  
+                    FNode = tipFactorFunction(tipFactor_, xNode, lambda_, phi);  
+                    nodeArea = ringAreaList_[ring];
+                    UrefNode = 2 * mag(U_dPointCells) / (1 + sqrt(1 - Ct));
+
+                    a1 += nodeArea * pow(UrefNode,2) * gNode * FNode;
+                    a2 += nodeArea * pow(UrefNode,2) * gNode * FNode * pow(xNode,2);
+                    if (xNode > 0) {
+                        a3 += nodeArea * pow(UrefNode * gNode * FNode / xNode, 2);
+                    }
+                    a4 += nodeArea * pow(UrefNode * gNode * FNode, 2);
+                    a5 += nodeArea * pow(UrefNode * gNode * FNode * xNode, 2);
+                }
+            }
+
+            S0 = S0Function(Ct, Ct_rated_);
+
+            float nominalThrust = 0.5 * density * diskArea_ * pow(UrefYaw,2);
+            float thrust = Ct * nominalThrust;
+
+            b0 = -S0 * lambda_ * a2 + 0.5 * pow(S0,2) * a5 - thrust / density;
+            b1 = lambda_ * a1 - S0 * a4;
+            b2 = 0.5 * a3;
+
+            q0 = -b1 + sqrt(pow(b1,2) - 4 * b0 * b2) / (2 * b2);
+            // ---
+
+            // Cp calculation
+            total_nodes_counter = 0;
+            for (int ring = 0; ring <= (numberRings_); ring = ring + 1)
+            {
+                tita_r = ringTitaList_[ring];
+                rMed_r = ringrMedList_[ring];
+                for (int nodeIterator = 1; nodeIterator <= ringNodesList_[ring]; nodeIterator += 1)
+                {
+                    tita_n_Rad = 2 * M_PI * (tita_r * (nodeIterator - 1)) / 360;
+
+                    vector Bi = getNodePosition(tita_n_Rad, rMed_r, yawRad, diskPoint_, ring, numberRings_);
+                    float radius = mag(diskPoint_ - Bi);
+
+                    vector U_dPointCells = U_dNodes[total_nodes_counter];
+                    tensor transform = getNodeTransformTensor(
+                        Bi,
+                        diskPoint_,
+                        uniDiskDir_
+                    );
+                    float phi = getNodePhiAngle(
+                        transform,
+                        U_dPointCells,
+                        radius,
+                        omega
+                    );
+
+                    total_nodes_counter += 1;
+                    
+                    xNode = rMed_r / maxR_;
+                    gNode = rootFactorFunction(rootFactor_, xNode, rootDistance_, phi);  
+                    FNode = tipFactorFunction(tipFactor_, xNode, lambda_, phi);  
+                    nodeArea = ringAreaList_[ring];
+                    UrefNode = 2 * mag(U_dPointCells) / (1 + sqrt(1 - Ct));
+
+                    if (xNode > 0) {
+                        Cp_sum += nodeArea * UrefNode * mag(U_dPointCells) * (q0 / xNode - S0 * xNode) * gNode * FNode;
+                    }
+                }
+            }
+            float nominalPower = 0.5 * density * diskArea_ * pow(UrefYaw,3);
+            float realPower = omega * maxR_ * density * Cp_sum;
+            Cp = realPower / nominalPower;
+
+            Info << "S0 = " << S0 << endl; 
         }
 
         Info << "q0 = " << q0 << endl; 
@@ -939,6 +1063,30 @@ scalar Foam::fv::actuationDiskRingsV21_Source::addactuationDiskRings_AxialInerti
                     
                     fn_point = density_ * pow(U_inf_point, 2) * q0 * (g_point * F_point / x_point) * (lambda_ * x_point + q0 * (g_point * F_point / ( 2 * x_point)));
                     ft_point = density_ * pow(U_inf_point, 2) * q0 * (g_point * F_point / x_point) * (mag(U_dPointCells) / U_inf_point);
+
+                    nodeArea = ringAreaList_[ring];
+
+                    fn_point *= nodeArea;
+                    ft_point *= nodeArea;
+                }
+
+                F_n_Bi = fn_point / density_; // without density to the solver
+                F_tita_Bi = ft_point / density_; // without density to the solver
+            }
+            else if (forceCalculationMethod_ == 3)
+            // Generalized Analytical Actuator Disk by Sorensen 2023
+            {
+                U_inf_point = 2 * mag(U_dPointCells) / (1 + sqrt( 1 - Ct ));
+                x_point = radius / maxR_;
+                if (x_point == 0) {
+                    fn_point = 0;
+                    ft_point = 0;
+                } else {
+                    float g_point = rootFactorFunction(rootFactor_, x_point, rootDistance_, phi);  
+                    float F_point = tipFactorFunction(tipFactor_, x_point, lambda_, phi);  
+                    
+                    fn_point = density_ * pow(U_inf_point, 2) * (q0 / x_point - S0 * x_point) * g_point * F_point * (lambda_ * x_point + 0.5 * (q0 / x_point - S0 * x_point) * g_point * F_point );
+                    ft_point = density_ * U_inf_point * mag(U_dPointCells) * (q0 / x_point - S0 * x_point) * g_point * F_point;
 
                     nodeArea = ringAreaList_[ring];
 

@@ -90,6 +90,9 @@ namespace Foam
             //- Thrust coefficient
             scalar Ct_;
 
+            //- Thrust coefficient for rated velocity
+            scalar Ct_rated_;
+
             //- Fixed Uinf for thrust calculation
             scalar Uref_;
 
@@ -389,6 +392,12 @@ namespace Foam
                 return Ct_;
             }
 
+            //- Return Ct_rated
+            scalar Ct_rated() const
+            {
+                return Ct_rated_;
+            }
+
             //- Return Uinf
             scalar Uinf() const
             {
@@ -566,6 +575,11 @@ float getNodePhiAngle(
     Foam::vector U_dPointCells,
     float radius,
     float omega
+);
+
+float S0Function(
+    float Ct,
+    float Ct_rated
 );
 
 float posInTableUref2(
