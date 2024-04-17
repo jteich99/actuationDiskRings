@@ -555,6 +555,19 @@ Foam::vector getNodeVelocity(
     Foam::vector Bi
 );
 
+Foam::tensor getNodeTransformTensor(
+    Foam::vector Bi,
+    Foam::vector diskPoint,
+    Foam::vector uniDiskDir
+);
+
+float getNodePhiAngle(
+    Foam::tensor transform,
+    Foam::vector U_dPointCells,
+    float radius,
+    float omega
+);
+
 float posInTableUref2(
     int posI,
     Foam::List<Foam::scalar> Uref2List_,
@@ -563,6 +576,20 @@ float posInTableUref2(
     Foam::scalar rtable,
     Foam::vector U_dPointCells_ntr,
     Foam::List<Foam::scalar> UdiList_
+);
+
+float tipFactorFunction(
+    int tipFactorType,
+    float x,
+    float lambda,
+    float phi
+);
+
+float rootFactorFunction(
+    int rootFactorType,
+    float x,
+    float rootDistance,
+    float phi
 );
 
 float gFunction(

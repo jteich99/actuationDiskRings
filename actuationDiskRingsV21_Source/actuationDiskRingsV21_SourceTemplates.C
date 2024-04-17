@@ -610,17 +610,28 @@ scalar Foam::fv::actuationDiskRingsV21_Source::addactuationDiskRings_AxialInerti
                     float radius = mag(diskPoint_ - Bi);
 
                     vector U_dPointCells = U_dNodes[total_nodes_counter];
+                    tensor transform = getNodeTransformTensor(
+                        Bi,
+                        diskPoint_,
+                        uniDiskDir_
+                    );
+                    float phi = getNodePhiAngle(
+                        transform,
+                        U_dPointCells,
+                        radius,
+                        omega
+                    );
 
                     total_nodes_counter += 1;
                     
                     xNode = rMed_r / maxR_;
-                    gNode = gFunction(xNode, rootDistance_);  
-                    FNode = FFunction(xNode, lambda_);  
+                    gNode = rootFactorFunction(rootFactor_, xNode, rootDistance_, phi);  
+                    FNode = tipFactorFunction(tipFactor_, xNode, lambda_, phi);  
                     nodeArea = ringAreaList_[ring];
                     UrefNode = 2 * mag(U_dPointCells) / (1 + sqrt(1 - Ct));
                     a1 += pow(UrefNode, 2) * gNode * FNode * nodeArea;
                     if (xNode > 0) {
-                        a2 += pow(UrefNode, 2) * pow( gNode * FNode / xNode , 2) * nodeArea /2;
+                        a2 += 0.5 * pow(UrefNode, 2) * pow( gNode * FNode / xNode , 2) * nodeArea;
                     }
                     Cp_sum += UrefNode * mag(U_dPointCells) * gNode * FNode * nodeArea;
                     Info << "" << endl;
@@ -758,54 +769,36 @@ scalar Foam::fv::actuationDiskRingsV21_Source::addactuationDiskRings_AxialInerti
             scalar z_node = Bi[2];
             //----- End of calculate node position ------------------------------------------
 
-            //----- Calculate radial and tangential vectors ------------------------------------------
-            // blade vector
-            vector bladeUniDir = vector(0, 0, 1); // we force this vector for the center node
-            vector bladeDir = vector(0, 0, 1); // initialization 
-            // if (ring == numberRings_)
-            // {
-            //     bladeUniDir = vector(0, 0, 1); // we force this vector for the center node
-            // }
-            // else
-            if (ring != numberRings_)
-            {
-                bladeDir = vector(x_node - diskPoint_[0], y_node - diskPoint_[1], z_node - diskPoint_[2]);
-                bladeUniDir = bladeDir / mag(bladeDir);
-            }
+            tensor transform = getNodeTransformTensor(
+                Bi,
+                diskPoint_,
+                uniDiskDir_
+            );
 
-            // calculate the tangential vector
-            F_tita_dir = vector(uniDiskDir[1] * bladeUniDir[2] - uniDiskDir[2] * bladeUniDir[1],
-                                -1 * (uniDiskDir[0] * bladeUniDir[2] - uniDiskDir[2] * bladeUniDir[0]),
-                                uniDiskDir[0] * bladeUniDir[1] - uniDiskDir[1] * bladeUniDir[0]);
-
-            F_tita_dir = F_tita_dir / mag(F_tita_dir);
-            //----- End of calculate radial and tangential vectors ------------------------------------------
-
-            //----- Calculate tensor to transfor cartesian coordinates to cylindrical coordinates -------------------------
-            vector_n = -1 * uniDiskDir;
-            vector_t = F_tita_dir;
-            vector_r = bladeUniDir;
-
-            tensor Transform(vector_n[0], vector_t[0], vector_r[0],
-                             vector_n[1], vector_t[1], vector_r[1],
-                             vector_n[2], vector_t[2], vector_r[2]);
             //----- End of calculate tensor to transfor cartesian coordinates to cylindrical coordinates -------------------------
 
             radius = mag(diskPoint_ - Bi);
+
+            vector U_dPointCells = U_dNodes[total_nodes_counter];
+            float phi = getNodePhiAngle(
+                transform,
+                U_dPointCells,
+                radius,
+                omega
+            );
 
             // save for the output
             posList.append(radius);
 
             // change of coordinate system
-            Bi_ntr = inv(Transform) & Bi;
+            Bi_ntr = inv(transform) & Bi;
 
             //----- Calculate velocity in node ------------------------------------------
             // calculate velocity in node
-            vector U_dPointCells = U_dNodes[total_nodes_counter];
             total_nodes_counter += 1;
 
             // change of coordinate system
-            U_dPointCells_ntr = inv(Transform) & U_dPointCells;
+            U_dPointCells_ntr = inv(transform) & U_dPointCells;
 
             // velocities in the profile coordinates
             U_n = -1 * U_dPointCells_ntr[0];
@@ -820,7 +813,7 @@ scalar Foam::fv::actuationDiskRingsV21_Source::addactuationDiskRings_AxialInerti
             {
                 // change of coordinate system
                 // Pi_ntr = coordinate of cell in cylindrical cooridnate system
-                Pi_ntr = inv(Transform) & mesh().cellCentres()[cellsDisc[c]];
+                Pi_ntr = inv(transform) & mesh().cellCentres()[cellsDisc[c]];
 
                 // calculate the distances from node to cell center in blade coordinate system
                 dn = mag(Pi_ntr[0] - Bi_ntr[0]);
@@ -941,9 +934,11 @@ scalar Foam::fv::actuationDiskRingsV21_Source::addactuationDiskRings_AxialInerti
                     fn_point = 0;
                     ft_point = 0;
                 } else {
-
-                    fn_point = density_ * pow(U_inf_point, 2) * q0 * (gFunction(x_point, rootDistance_) * FFunction(x_point, lambda_) / x_point) * (lambda_ * x_point + q0 * (gFunction(x_point, rootDistance_) * FFunction(x_point, lambda_) / ( 2 * x_point)));
-                    ft_point = density_ * pow(U_inf_point, 2) * q0 * (gFunction(x_point, rootDistance_) * FFunction(x_point, lambda_) / x_point) * (mag(U_dPointCells) / U_inf_point);
+                    float g_point = rootFactorFunction(rootFactor_, x_point, rootDistance_, phi);  
+                    float F_point = tipFactorFunction(tipFactor_, x_point, lambda_, phi);  
+                    
+                    fn_point = density_ * pow(U_inf_point, 2) * q0 * (g_point * F_point / x_point) * (lambda_ * x_point + q0 * (g_point * F_point / ( 2 * x_point)));
+                    ft_point = density_ * pow(U_inf_point, 2) * q0 * (g_point * F_point / x_point) * (mag(U_dPointCells) / U_inf_point);
 
                     nodeArea = ringAreaList_[ring];
 
@@ -1060,7 +1055,7 @@ scalar Foam::fv::actuationDiskRingsV21_Source::addactuationDiskRings_AxialInerti
             {
 
                 (*outRings) << i + 1 << ", " << ring << ", " << posList[i] << ", " << ringAreaList_[ring] << ", "
-                            << UnList[i] << ", " << UtList[i] << ", " << FnList[i] << ", " << FtList[i] << std::endl;
+                << UnList[i] << ", " << UtList[i] << ", " << FnList[i] << ", " << FtList[i] << std::endl;
 
                 i += 1;
             }

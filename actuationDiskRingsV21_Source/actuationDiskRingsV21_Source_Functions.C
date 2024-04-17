@@ -83,6 +83,72 @@ vector getNodeVelocity(
     return U_dPointCells;
 }
 
+tensor getNodeTransformTensor(
+    vector Bi,
+    vector diskPoint,
+    vector uniDiskDir
+){
+    // calculate the blade vector
+    vector bladeDir = Bi - diskPoint;
+    vector bladeUniDir;
+    if (mag(bladeDir) == 0){
+        bladeUniDir = vector(0,0,1);
+    } else {
+        bladeUniDir = bladeDir / mag(bladeDir);
+    }
+
+    // calculate the tangential vector
+    vector F_tita_dir = vector(
+        uniDiskDir[1] * bladeUniDir[2] - uniDiskDir[2] * bladeUniDir[1],
+        -1 * (uniDiskDir[0] * bladeUniDir[2] - uniDiskDir[2] * bladeUniDir[0]),
+        uniDiskDir[0] * bladeUniDir[1] - uniDiskDir[1] * bladeUniDir[0]
+    ); 
+    F_tita_dir = F_tita_dir / mag(F_tita_dir);
+    
+    // calculate the tensor transformation of coordinates
+    vector vector_n = -1 * uniDiskDir;
+    vector vector_t = F_tita_dir;
+    vector vector_r = bladeUniDir;
+    tensor transform(
+        vector_n[0], vector_t[0], vector_r[0],
+        vector_n[1], vector_t[1], vector_r[1],
+        vector_n[2], vector_t[2], vector_r[2]); 
+
+    return transform;
+}
+
+float getNodePhiAngle(
+    tensor transform,
+    vector U_dPointCells,
+    float radius,
+    float omega
+){
+    vector U_dPointCells_ntr = inv(transform) & U_dPointCells; 
+    float U_n = -1 * U_dPointCells_ntr[0];
+    float U_t = -1 * U_dPointCells_ntr[1];
+
+    float phi = M_PI; // so that center node has sen(phi)=1
+    if (radius != 0)
+    {
+        if (omega > 0)
+        {
+            phi = Foam::atan(U_n / (radius * omega - U_t));
+        }
+        if (U_t - radius * omega > 0)
+        {
+            if (U_n >= 0)
+            {
+                phi += M_PI;
+            } else if (U_n < 0)
+            {
+                phi -= M_PI;
+            }
+        }
+    }
+
+    return phi;
+}
+
 float posInTableUref2(
     int posI,
     List<scalar> Uref2List_,
@@ -126,6 +192,102 @@ float posInTableUref2(
     }
 
     return pos;
+}
+
+float tipFactorFunction(
+    int tipFactorType,
+    float x,
+    float lambda,
+    float phi
+){
+    float Nb = 3;
+    float F;
+    if (tipFactorType == 0){
+        // tip factor off
+        F = 1;
+    }
+    else if (tipFactorType == 1){
+        // tip factor by Shen 2005
+        scalar c1 = 0.125;
+        scalar c2 = 27;
+        scalar c3 = 0.1;
+
+        scalar g = std::exp(-c1 * (Nb * lambda - c2)) + c3;
+        scalar f = (Nb / 2) * (1 - x) / (x * std::sin(phi));
+        if (f > 0)
+        {
+            if (((std::exp(-g * f)) > -1) and ((std::exp(-g * f)) < 1))
+            {
+                F = (2 / (M_PI)) * std::acos(std::exp(-g * f));
+            }
+        }
+    }
+    else if (tipFactorType == 2){
+        // tip factor by Prandtl
+        F = (2/M_PI) * std::acos( std::exp( - (Nb/2) * std::sqrt(1 + pow(lambda,2)) * (1 - x) ) );
+    }
+    else {
+        Info << "tipFactor type not valid" << endl;
+    }
+    
+    return F;
+}
+
+float rootFactorFunction(
+    int rootFactorType,
+    float x,
+    float rootDistance,
+    float phi
+){
+    float g;
+    float Nb = 3;
+    if (rootFactorType == 0){
+        g = 1;
+    }
+    else if (rootFactorType == 1){
+        // root factor by Glauert
+        scalar f_tip = (Nb / 2) * (1 - x) / (x * std::sin(phi));
+        if (x <= rootDistance)
+        {
+            g = 0;
+        }
+        // else if ((x > rootDistance) and (f_tip > 0) and (x < 0.5))
+        else if ((f_tip > 0) and (x < 0.5))
+        {
+            scalar f = (Nb / 2) * (x - 0.1) / (x * std::sin(phi));
+            if ((std::exp(-f) > -1) and (std::exp(-f) < 1))
+            {
+                g = (2 / (M_PI)) * std::acos(std::exp(-f));
+            }
+        }
+        else
+        {
+            g = 1;
+        }
+    }
+    else if (rootFactorType == 2){
+        // root factor by Sorensen 2020
+        float a = 2.335;
+        int b = 4;
+        if (x <= rootDistance)
+        {
+            g = 0;
+        }
+        else if (x < 0.5)
+        // if (x < 0.5)
+        {
+            g = 1 - std::exp( - a * pow((x/rootDistance), b) );
+        }
+        else
+        {
+            g = 1;
+        }
+    }
+    else {
+        Info << "rootFactor type not valid" << endl;
+    }
+
+    return g;
 }
 
 float gFunction(
