@@ -129,8 +129,7 @@ Foam::fv::actuationDiskRingsV21_Source::actuationDiskRingsV21_Source(
       UdCellsMethod_(readScalar(coeffs_.lookup("UdCellsMethod"))),
       UdCenterToggle_(readScalar(coeffs_.lookup("UdCenterToggle"))),
       forceDistributionMethod_(readScalar(coeffs_.lookup("forceDistributionMethod"))),
-      forceCalculationMethod_(readScalar(coeffs_.lookup("forceCalculationMethod"))),
-      UrefCalculationMethod_(readScalar(coeffs_.lookup("UrefCalculationMethod"))),
+      ADmodel_(readScalar(coeffs_.lookup("ADmodel"))),
       rootFactor_(readScalar(coeffs_.lookup("rootFactor"))),
       tipFactor_(readScalar(coeffs_.lookup("tipFactor"))),
       Ct_rated_(readScalar(coeffs_.lookup("Ct_rated"))),
@@ -154,42 +153,48 @@ Foam::fv::actuationDiskRingsV21_Source::actuationDiskRingsV21_Source(
         CpPowerCurveList_[i] = powerCurve_table_[i][2];
     }
 
-    //---define list using the table UdAvg_table
-    UrefList_.setSize(UdAvg_table_.size());
-    omegaList_.setSize(UdAvg_table_.size());
-    pitchList_.setSize(UdAvg_table_.size());
-    UdAvgList_.setSize(UdAvg_table_.size());
-    CtList_.setSize(UdAvg_table_.size());
-    CpList_.setSize(UdAvg_table_.size());
-
-    forAll(UdAvg_table_, i)
+    if (ADmodel_ == 1)
     {
-        UrefList_[i] = UdAvg_table_[i].first()[0];
-        omegaList_[i] = UdAvg_table_[i].first()[1];
-        pitchList_[i] = UdAvg_table_[i].first()[2];
-        UdAvgList_[i] = UdAvg_table_[i].second()[0];
-        CtList_[i] = UdAvg_table_[i].second()[1];
-        CpList_[i] = UdAvg_table_[i].second()[2];
-    }
+        //---define list using the table UdAvg_table
+        UrefList_.setSize(UdAvg_table_.size());
+        omegaList_.setSize(UdAvg_table_.size());
+        pitchList_.setSize(UdAvg_table_.size());
+        UdAvgList_.setSize(UdAvg_table_.size());
+        CtList_.setSize(UdAvg_table_.size());
+        CpList_.setSize(UdAvg_table_.size());
 
-    //---define list using the table Udi_table
+        forAll(UdAvg_table_, i)
+        {
+            UrefList_[i] = UdAvg_table_[i].first()[0];
+            omegaList_[i] = UdAvg_table_[i].first()[1];
+            pitchList_[i] = UdAvg_table_[i].first()[2];
+            UdAvgList_[i] = UdAvg_table_[i].second()[0];
+            CtList_[i] = UdAvg_table_[i].second()[1];
+            CpList_[i] = UdAvg_table_[i].second()[2];
+        }
 
-    //- Original List
-    Uref2List_orig.setSize(Udi_table_.size());
-    UinfList_orig.setSize(Udi_table_.size());
-    rList_orig.setSize(Udi_table_.size());
-    UdiList_orig.setSize(Udi_table_.size());
-    fnList_orig.setSize(Udi_table_.size());
-    ftList_orig.setSize(Udi_table_.size());
+        //---define list using the table Udi_table
 
-    forAll(Udi_table_, i)
-    {
-        Uref2List_orig[i] = Udi_table_[i].first()[0];
-        UinfList_orig[i] = Udi_table_[i].first()[1];
-        rList_orig[i] = Udi_table_[i].first()[2];
-        UdiList_orig[i] = Udi_table_[i].second()[0];
-        fnList_orig[i] = Udi_table_[i].second()[1];
-        ftList_orig[i] = Udi_table_[i].second()[2];
+        //- Original List
+        Uref2List_orig.setSize(Udi_table_.size());
+        UinfList_orig.setSize(Udi_table_.size());
+        rList_orig.setSize(Udi_table_.size());
+        UdiList_orig.setSize(Udi_table_.size());
+        fnList_orig.setSize(Udi_table_.size());
+        ftList_orig.setSize(Udi_table_.size());
+
+        forAll(Udi_table_, i)
+        {
+            Uref2List_orig[i] = Udi_table_[i].first()[0];
+            UinfList_orig[i] = Udi_table_[i].first()[1];
+            rList_orig[i] = Udi_table_[i].first()[2];
+            UdiList_orig[i] = Udi_table_[i].second()[0];
+            fnList_orig[i] = Udi_table_[i].second()[1];
+            ftList_orig[i] = Udi_table_[i].second()[2];
+        }
+
+        Info << "Print Avg Table: " << endl;
+        Info << UdAvg_table_ << endl;
     }
 
     coeffs_.lookup("fieldNames") >> fieldNames_;
@@ -199,8 +204,6 @@ Foam::fv::actuationDiskRingsV21_Source::actuationDiskRingsV21_Source(
          << this->name() << endl;
     diskCellId_ = mesh.findCell(diskPoint_);
 
-    Info << "Print Avg Table: " << endl;
-    Info << UdAvg_table_ << endl;
 
     //---TEST--------------------------------------------------
     // all the variables should be declarade in .H in order to be seen here and i Template
@@ -261,25 +264,28 @@ Foam::fv::actuationDiskRingsV21_Source::actuationDiskRingsV21_Source(
         ringrMedList_.append(rMedI_);
         areaI_ = M_PI * (pow(rMedI_ + ringThickness_ / 2, 2) - pow(rMedI_ - ringThickness_ / 2, 2)) / round(nodesI_);
         ringAreaList_.append(areaI_);
-        // Info << "ring: "<<ring;
-        // Info << " - nodes: "<<round(nodesI_);
-        // Info << " - tita: "<<titaI_;
-        // Info << " - node area: "<<areaI_<<endl;
+        // Info << "ring: " << ring << endl;
+        // Info << " - nodes: " << round(nodesI_) << endl;
+        // Info << " - tita: " << titaI_ << endl;
+        // Info << " - node area: " << areaI_ << endl;
         rMedI_ += ringThickness_;
     }
 
-    // count how many radius sections are in the original table
     int nR_orig = 1;
-    while (rList_orig[nR_orig] - rList_orig[nR_orig - 1] > 0)
+    if (ADmodel_ == 1)
     {
-        nR_orig = nR_orig + 1;
-    }
-    Info << "nR_orig: " << nR_orig << endl;
+        // count how many radius sections are in the original table
+        while (rList_orig[nR_orig] - rList_orig[nR_orig - 1] > 0)
+        {
+            nR_orig = nR_orig + 1;
+        }
+        Info << "nR_orig: " << nR_orig << endl;
 
-    Info << "rList_orig: " << endl;
-    for (int i = 0; i < nR_orig; i = i + 1)
-    {
-        Info << rList_orig[i] << endl;
+        Info << "rList_orig: " << endl;
+        for (int i = 0; i < nR_orig; i = i + 1)
+        {
+            Info << rList_orig[i] << endl;
+        }
     }
 
     // Set up a list with node's radial positions
@@ -291,73 +297,76 @@ Foam::fv::actuationDiskRingsV21_Source::actuationDiskRingsV21_Source(
 
     Info << "rNodeList_: " << rNodeList_ << endl;
 
-    // Set up a list with Uinf from original table
-    for (int i = 0; i < (UinfList_orig.size() / UrefList_.size()); i = i + nR_orig)
+    if (ADmodel_ == 1)
     {
-        UinfOnlyList_.append(UinfList_orig[i]);
-    }
-
-    Info << "Original UinfOnlyList_: " << UinfOnlyList_ << endl;
-
-    // Set up new table lists with the corresponding size
-    Uref2List_.setSize(rNodeList_.size() * UrefList_.size() * UinfOnlyList_.size());
-    UinfList_.setSize(rNodeList_.size() * UrefList_.size() * UinfOnlyList_.size());
-    rList_.setSize(rNodeList_.size() * UrefList_.size() * UinfOnlyList_.size());
-    UdiList_.setSize(rNodeList_.size() * UrefList_.size() * UinfOnlyList_.size());
-    fnList_.setSize(rNodeList_.size() * UrefList_.size() * UinfOnlyList_.size());
-    ftList_.setSize(rNodeList_.size() * UrefList_.size() * UinfOnlyList_.size());
-
-    // Set up new list with closer radial nodes from the old table.
-    posrList_.setSize(rNodeList_.size());
-
-    for (int i = 0; i < rNodeList_.size(); i = i + 1)
-    {
-        scalar dist = VGREAT;
-        scalar posr = 0;
-        while ((mag(rNodeList_[i] - rList_orig[posr]) < dist) && (posr < nR_orig - 1))
+        // Set up a list with Uinf from original table
+        for (int i = 0; i < (UinfList_orig.size() / UrefList_.size()); i = i + nR_orig)
         {
-            dist = mag(rNodeList_[i] - rList_orig[posr]);
-            if ((rNodeList_[i] - rList_orig[posr + 1]) >= 0)
+            UinfOnlyList_.append(UinfList_orig[i]);
+        }
+
+        Info << "Original UinfOnlyList_: " << UinfOnlyList_ << endl;
+
+        // Set up new table lists with the corresponding size
+        Uref2List_.setSize(rNodeList_.size() * UrefList_.size() * UinfOnlyList_.size());
+        UinfList_.setSize(rNodeList_.size() * UrefList_.size() * UinfOnlyList_.size());
+        rList_.setSize(rNodeList_.size() * UrefList_.size() * UinfOnlyList_.size());
+        UdiList_.setSize(rNodeList_.size() * UrefList_.size() * UinfOnlyList_.size());
+        fnList_.setSize(rNodeList_.size() * UrefList_.size() * UinfOnlyList_.size());
+        ftList_.setSize(rNodeList_.size() * UrefList_.size() * UinfOnlyList_.size());
+
+        // Set up new list with closer radial nodes from the old table.
+        posrList_.setSize(rNodeList_.size());
+
+        for (int i = 0; i < rNodeList_.size(); i = i + 1)
+        {
+            scalar dist = VGREAT;
+            scalar posr = 0;
+            while ((mag(rNodeList_[i] - rList_orig[posr]) < dist) && (posr < nR_orig - 1))
             {
-                posr = posr + 1;
+                dist = mag(rNodeList_[i] - rList_orig[posr]);
+                if ((rNodeList_[i] - rList_orig[posr + 1]) >= 0)
+                {
+                    posr = posr + 1;
+                }
+            }
+
+            posrList_[i] = posr;
+        }
+
+        Info << "posrList_ " << posrList_ << endl;
+
+        // we fill up the new table
+        for (int i = 0; i < UrefList_.size(); i = i + 1)
+        {
+            for (int j = 0; j < UinfOnlyList_.size(); j = j + 1)
+            {
+                for (int k = 1; k < rNodeList_.size(); k = k + 1) // La posicion 0 la agregamos al final
+                {
+                    // Info << "List position: "<<i*(UinfOnlyList_.size()*rNodeList_.size())+j*(rNodeList_.size())+k << endl;
+                    Uref2List_[i * (UinfOnlyList_.size() * rNodeList_.size()) + j * (rNodeList_.size()) + k] = UrefList_[i];
+                    UinfList_[i * (UinfOnlyList_.size() * rNodeList_.size()) + j * (rNodeList_.size()) + k] = UinfOnlyList_[j];
+                    rList_[i * (UinfOnlyList_.size() * rNodeList_.size()) + j * (rNodeList_.size()) + k] = rNodeList_[k];
+                    UdiList_[i * (UinfOnlyList_.size() * rNodeList_.size()) + j * (rNodeList_.size()) + k] = UdiList_orig[i * (UinfOnlyList_.size() * nR_orig) + j * nR_orig + posrList_[k]] + (rNodeList_[k] - rList_orig[posrList_[k]]) * (UdiList_orig[i * (UinfOnlyList_.size() * nR_orig) + j * nR_orig + posrList_[k] + 1] - UdiList_orig[i * (UinfOnlyList_.size() * nR_orig) + j * nR_orig + posrList_[k]]) / (rList_orig[posrList_[k] + 1] - rList_orig[posrList_[k]]);
+                    fnList_[i * (UinfOnlyList_.size() * rNodeList_.size()) + j * (rNodeList_.size()) + k] = fnList_orig[i * (UinfOnlyList_.size() * nR_orig) + j * nR_orig + posrList_[k]] + (rNodeList_[k] - rList_orig[posrList_[k]]) * (fnList_orig[i * (UinfOnlyList_.size() * nR_orig) + j * nR_orig + posrList_[k] + 1] - fnList_orig[i * (UinfOnlyList_.size() * nR_orig) + j * nR_orig + posrList_[k]]) / (rList_orig[posrList_[k] + 1] - rList_orig[posrList_[k]]);
+                    ftList_[i * (UinfOnlyList_.size() * rNodeList_.size()) + j * (rNodeList_.size()) + k] = ftList_orig[i * (UinfOnlyList_.size() * nR_orig) + j * nR_orig + posrList_[k]] + (rNodeList_[k] - rList_orig[posrList_[k]]) * (ftList_orig[i * (UinfOnlyList_.size() * nR_orig) + j * nR_orig + posrList_[k] + 1] - ftList_orig[i * (UinfOnlyList_.size() * nR_orig) + j * nR_orig + posrList_[k]]) / (rList_orig[posrList_[k] + 1] - rList_orig[posrList_[k]]);
+                }
             }
         }
 
-        posrList_[i] = posr;
-    }
-
-    Info << "posrList_ " << posrList_ << endl;
-
-    // we fill up the new table
-    for (int i = 0; i < UrefList_.size(); i = i + 1)
-    {
-        for (int j = 0; j < UinfOnlyList_.size(); j = j + 1)
+        // we fill up the new table
+        for (int i = 0; i < UrefList_.size(); i = i + 1)
         {
-            for (int k = 1; k < rNodeList_.size(); k = k + 1) // La posicion 0 la agregamos al final
+            for (int j = 0; j < UinfOnlyList_.size(); j = j + 1)
             {
-                // Info << "List position: "<<i*(UinfOnlyList_.size()*rNodeList_.size())+j*(rNodeList_.size())+k << endl;
+                int k = 0;
                 Uref2List_[i * (UinfOnlyList_.size() * rNodeList_.size()) + j * (rNodeList_.size()) + k] = UrefList_[i];
                 UinfList_[i * (UinfOnlyList_.size() * rNodeList_.size()) + j * (rNodeList_.size()) + k] = UinfOnlyList_[j];
                 rList_[i * (UinfOnlyList_.size() * rNodeList_.size()) + j * (rNodeList_.size()) + k] = rNodeList_[k];
                 UdiList_[i * (UinfOnlyList_.size() * rNodeList_.size()) + j * (rNodeList_.size()) + k] = UdiList_orig[i * (UinfOnlyList_.size() * nR_orig) + j * nR_orig + posrList_[k]] + (rNodeList_[k] - rList_orig[posrList_[k]]) * (UdiList_orig[i * (UinfOnlyList_.size() * nR_orig) + j * nR_orig + posrList_[k] + 1] - UdiList_orig[i * (UinfOnlyList_.size() * nR_orig) + j * nR_orig + posrList_[k]]) / (rList_orig[posrList_[k] + 1] - rList_orig[posrList_[k]]);
-                fnList_[i * (UinfOnlyList_.size() * rNodeList_.size()) + j * (rNodeList_.size()) + k] = fnList_orig[i * (UinfOnlyList_.size() * nR_orig) + j * nR_orig + posrList_[k]] + (rNodeList_[k] - rList_orig[posrList_[k]]) * (fnList_orig[i * (UinfOnlyList_.size() * nR_orig) + j * nR_orig + posrList_[k] + 1] - fnList_orig[i * (UinfOnlyList_.size() * nR_orig) + j * nR_orig + posrList_[k]]) / (rList_orig[posrList_[k] + 1] - rList_orig[posrList_[k]]);
-                ftList_[i * (UinfOnlyList_.size() * rNodeList_.size()) + j * (rNodeList_.size()) + k] = ftList_orig[i * (UinfOnlyList_.size() * nR_orig) + j * nR_orig + posrList_[k]] + (rNodeList_[k] - rList_orig[posrList_[k]]) * (ftList_orig[i * (UinfOnlyList_.size() * nR_orig) + j * nR_orig + posrList_[k] + 1] - ftList_orig[i * (UinfOnlyList_.size() * nR_orig) + j * nR_orig + posrList_[k]]) / (rList_orig[posrList_[k] + 1] - rList_orig[posrList_[k]]);
+                fnList_[i * (UinfOnlyList_.size() * rNodeList_.size()) + j * (rNodeList_.size()) + k] = fnList_[i * (UinfOnlyList_.size() * rNodeList_.size()) + j * (rNodeList_.size()) + k + rNodeList_.size() - 1] / ringNodesList_[ringNodesList_.size() - 1];
+                ftList_[i * (UinfOnlyList_.size() * rNodeList_.size()) + j * (rNodeList_.size()) + k] = 0;
             }
-        }
-    }
-
-    // we fill up the new table
-    for (int i = 0; i < UrefList_.size(); i = i + 1)
-    {
-        for (int j = 0; j < UinfOnlyList_.size(); j = j + 1)
-        {
-            int k = 0;
-            Uref2List_[i * (UinfOnlyList_.size() * rNodeList_.size()) + j * (rNodeList_.size()) + k] = UrefList_[i];
-            UinfList_[i * (UinfOnlyList_.size() * rNodeList_.size()) + j * (rNodeList_.size()) + k] = UinfOnlyList_[j];
-            rList_[i * (UinfOnlyList_.size() * rNodeList_.size()) + j * (rNodeList_.size()) + k] = rNodeList_[k];
-            UdiList_[i * (UinfOnlyList_.size() * rNodeList_.size()) + j * (rNodeList_.size()) + k] = UdiList_orig[i * (UinfOnlyList_.size() * nR_orig) + j * nR_orig + posrList_[k]] + (rNodeList_[k] - rList_orig[posrList_[k]]) * (UdiList_orig[i * (UinfOnlyList_.size() * nR_orig) + j * nR_orig + posrList_[k] + 1] - UdiList_orig[i * (UinfOnlyList_.size() * nR_orig) + j * nR_orig + posrList_[k]]) / (rList_orig[posrList_[k] + 1] - rList_orig[posrList_[k]]);
-            fnList_[i * (UinfOnlyList_.size() * rNodeList_.size()) + j * (rNodeList_.size()) + k] = fnList_[i * (UinfOnlyList_.size() * rNodeList_.size()) + j * (rNodeList_.size()) + k + rNodeList_.size() - 1] / ringNodesList_[ringNodesList_.size() - 1];
-            ftList_[i * (UinfOnlyList_.size() * rNodeList_.size()) + j * (rNodeList_.size()) + k] = 0;
         }
     }
 
@@ -458,31 +467,34 @@ Foam::fv::actuationDiskRingsV21_Source::actuationDiskRingsV21_Source(
         (*outRings) << "---ADRings.calibration---" << std::endl; // Head file
     }
 
-    outListFvOptions = new std::ofstream("outListFvOptions.txt", std::ios::app);
-    if (Pstream::myProcNo() == 0) // In Master node
+    if (ADmodel_ == 1)
     {
-        (*outListFvOptions) << "UdAvg_table" << std::endl;
-        (*outListFvOptions) << "(" << std::endl;
-        (*outListFvOptions) << "//(Uref[m/s], omega[rad/s], empty)(	UdAvg[m/s], 	Ct, 	Cp)" << std::endl;
-
-        for (int i = 0; i < UdAvg_table_.size(); i = i + 1)
+        outListFvOptions = new std::ofstream("outListFvOptions.txt", std::ios::app);
+        if (Pstream::myProcNo() == 0) // In Master node
         {
-            (*outListFvOptions) << "((" << UrefList_[i] << " " << omegaList_[i] << " 0) (" << UdAvgList_[i] << " " << CtList_[i] << " " << CpList_[i] << "))" << std::endl;
+            (*outListFvOptions) << "UdAvg_table" << std::endl;
+            (*outListFvOptions) << "(" << std::endl;
+            (*outListFvOptions) << "//(Uref[m/s], omega[rad/s], empty)(	UdAvg[m/s], 	Ct, 	Cp)" << std::endl;
+
+            for (int i = 0; i < UdAvg_table_.size(); i = i + 1)
+            {
+                (*outListFvOptions) << "((" << UrefList_[i] << " " << omegaList_[i] << " 0) (" << UdAvgList_[i] << " " << CtList_[i] << " " << CpList_[i] << "))" << std::endl;
+            }
+
+            (*outListFvOptions) << ");" << std::endl;
+            (*outListFvOptions) << "Udi_table" << std::endl;
+            (*outListFvOptions) << "(" << std::endl;
+            (*outListFvOptions) << "//(Uref[m/s], Uinf[m/s], r[m])(Udi(r)[m/s], fn(r)[N/m], ft(r)[N/m])" << std::endl;
+
+            (*outListFvOptions) << ");" << std::endl;
+
+            for (int i = 0; i < Uref2List_.size(); i = i + 1)
+            {
+                (*outListFvOptions) << "((" << Uref2List_[i] << " " << UinfList_[i] << " " << rList_[i] << ") (" << UdiList_[i] << " " << fnList_[i] << " " << ftList_[i] << "))" << std::endl;
+            }
+
+            (*outListFvOptions) << ");" << std::endl;
         }
-
-        (*outListFvOptions) << ");" << std::endl;
-        (*outListFvOptions) << "Udi_table" << std::endl;
-        (*outListFvOptions) << "(" << std::endl;
-        (*outListFvOptions) << "//(Uref[m/s], Uinf[m/s], r[m])(Udi(r)[m/s], fn(r)[N/m], ft(r)[N/m])" << std::endl;
-
-        (*outListFvOptions) << ");" << std::endl;
-
-        for (int i = 0; i < Uref2List_.size(); i = i + 1)
-        {
-            (*outListFvOptions) << "((" << Uref2List_[i] << " " << UinfList_[i] << " " << rList_[i] << ") (" << UdiList_[i] << " " << fnList_[i] << " " << ftList_[i] << "))" << std::endl;
-        }
-
-        (*outListFvOptions) << ");" << std::endl;
     }
 }
 
@@ -610,8 +622,8 @@ bool Foam::fv::actuationDiskRingsV21_Source::read(const dictionary &dict)
         coeffs_.readIfPresent("cellSize", cellSize_);
         coeffs_.readIfPresent("diskArea", diskArea_);
         coeffs_.readIfPresent("diskPoint", diskPoint_);
-        // coeffs_.readIfPresent("rootFactor", rootFactor_);
-        // coeffs_.readIfPresent("tipFactor", tipFactor_);
+        coeffs_.readIfPresent("rootFactor", rootFactor_);
+        coeffs_.readIfPresent("tipFactor", tipFactor_);
         coeffs_.readIfPresent("nodesCellsRatio", nodesCellsRatio_);
         coeffs_.readIfPresent("rThicknessCellsizeRatio", rThicknessCellsizeRatio_);
         coeffs_.readIfPresent("UdAvg_table", UdAvg_table_);
@@ -620,8 +632,7 @@ bool Foam::fv::actuationDiskRingsV21_Source::read(const dictionary &dict)
         coeffs_.readIfPresent("UdCellsMethod", UdCellsMethod_);
         coeffs_.readIfPresent("UdCenterToggle", UdCenterToggle_);
         coeffs_.readIfPresent("forceDistributionMethod", forceDistributionMethod_);
-        coeffs_.readIfPresent("forceCalculationMethod", forceCalculationMethod_);
-        coeffs_.readIfPresent("UrefCalculationMethod", UrefCalculationMethod_);
+        coeffs_.readIfPresent("ADmodel", ADmodel_);
         coeffs_.readIfPresent("centerRatio", centerRatio_);
 
         checkData();

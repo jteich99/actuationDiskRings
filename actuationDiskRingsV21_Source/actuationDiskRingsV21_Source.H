@@ -222,13 +222,13 @@ namespace Foam
 
             int forceDistributionMethod_;
             
-            // force calculation method
-            //  - 1 = numeric actuator - via calibration table
-            int forceCalculationMethod_;
-            
-            // Uref calculation method
-            //  - 1 = numeric actuator - via calibration table
-            int UrefCalculationMethod_;
+            // AD model
+            // - 0 : uniform
+            // - 1 : numeric 
+            // - 2 : analytic 
+            // - 3 : analytic non-uniform inflow 
+            // - 4 : generalized analytic non-uniform inflow 
+            int ADmodel_;
 
             // List of cell ID for each node
             List<label> nodeCellID_;
@@ -500,14 +500,9 @@ namespace Foam
                 return forceDistributionMethod_;
             }
 
-            scalar forceCalculationMethod() const
+            scalar ADmodel() const
             {
-                return forceCalculationMethod_;
-            }
-
-            scalar UrefCalculationMethod() const
-            {
-                return UrefCalculationMethod_;
+                return ADmodel_;
             }
 
             //- ratio to consider in center of AD

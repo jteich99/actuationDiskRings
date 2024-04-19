@@ -149,6 +149,19 @@ float getNodePhiAngle(
     return phi;
 }
 
+float S0Function(
+    float Ct,
+    float Ct_rated
+){
+    float S0;
+    if (Ct < Ct_rated) {
+        S0 = 0.08 * pow((Ct_rated - Ct)/Ct_rated, 3);
+    } else if (Ct >= Ct_rated) {
+        S0 = 0.05 * (Ct_rated - Ct)/Ct_rated;
+    }
+    return S0;
+}
+
 float posInTableUref2(
     int posI,
     List<scalar> Uref2List_,
@@ -212,14 +225,18 @@ float tipFactorFunction(
         scalar c2 = 27;
         scalar c3 = 0.1;
 
-        scalar g = std::exp(-c1 * (Nb * lambda - c2)) + c3;
-        scalar f = (Nb / 2) * (1 - x) / (x * std::sin(phi));
-        if (f > 0)
-        {
-            if (((std::exp(-g * f)) > -1) and ((std::exp(-g * f)) < 1))
+        if (x > 0) {
+            scalar g = std::exp(-c1 * (Nb * lambda - c2)) + c3;
+            scalar f = (Nb / 2) * (1 - x) / (x * std::sin(phi));
+            if (f > 0)
             {
-                F = (2 / (M_PI)) * std::acos(std::exp(-g * f));
+                if (((std::exp(-g * f)) > -1) and ((std::exp(-g * f)) < 1))
+                {
+                    F = (2 / (M_PI)) * std::acos(std::exp(-g * f));
+                }
             }
+        } else {
+            F = 1;
         }
     }
     else if (tipFactorType == 2){
@@ -327,7 +344,7 @@ float a1Function(
     float g;
     float F;
     float func;
-    for (float x = 2/resolution; x < 1; x += 1/resolution) {
+    for (float x = 2/resolution; x <= 1; x += 1/resolution) {
         // Info << "x - 1/resolution = " << x - 1/resolution << endl;
         gPrev = gFunction(x - 1/resolution, rootDistance);
         FPrev = FFunction(x - 1/resolution, lambda);
@@ -353,7 +370,7 @@ float a2Function(
     float g;
     float F;
     float func;
-    for (float x = 2/resolution; x < 1; x += 1/resolution) {
+    for (float x = 2/resolution; x <= 1; x += 1/resolution) {
         gPrev = gFunction(x - 1/resolution, rootDistance);
         FPrev = FFunction(x - 1/resolution, lambda);
         funcPrev = gPrev * FPrev * (x - 1/resolution);

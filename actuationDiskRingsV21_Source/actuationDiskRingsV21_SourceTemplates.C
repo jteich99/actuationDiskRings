@@ -367,6 +367,8 @@ scalar Foam::fv::actuationDiskRingsV21_Source::addactuationDiskRings_AxialInerti
     }
     // ----------------------------------
 
+    float fn;
+    float ft;
     int pos1 = 0;
     int pos2 = 0;
     int pos = 0;
@@ -382,11 +384,114 @@ scalar Foam::fv::actuationDiskRingsV21_Source::addactuationDiskRings_AxialInerti
     float a5;
     float q0;
     float S0;
+    float gNode;
+    float FNode;
     DynamicList<float> UavgRings;
+    scalar scale_factor_n;
+    scalar scale_factor_t;
 
-    if (UrefCalculationMethod_ == 1) {
+    if (ADmodel_ == 0) {
+        Info << "" << endl;
+        Info << "Uniform AD model starting..." << endl;
+
+        scalar cosUinfAngle = (diskDir_[0] * uniDiskDir[0] + diskDir_[1] * uniDiskDir[1]) / (mag(diskDir_) * mag(uniDiskDir));
+        UrefYaw = Uref_ * cosUinfAngle;
+        // upRho = 1;
+        omega = omega_;
+        // scalar lambda = maxR * omega / UrefYaw;
+        Ct = Ct_;
+        Cp = Cp_;
+
+        Info << "UrefYaw = " << UrefYaw << endl;
+        Info << "Ct = " << Ct << endl;
+        Info << "Cp = " << Cp << endl;
+        Info << "omega = " << omega << endl;
+
+        // thrust, power and torque without density (to then pass fn and ft without density to solver)
+        float thrust = 0.5 * diskArea_ * pow(UrefYaw, 2) * Ct;
+        float power = 0.5 * diskArea_ * pow(UrefYaw, 3) * Cp;
+        float torque = 0;
+        if (omega > 0)
+        {
+            torque = power / omega;
+        }
+
+        // normal and tangentila surface forces
+        fn = thrust / diskArea_;
+        ft = (3 * torque) / (2 * M_PI * pow(maxR_, 3));
+        Info << "fn mean = " << fn << endl;
+        Info << "ft mean = " << ft << endl;
+
+        // sums for scale factors (used if root or tip factor are in use) 
+        scalar sumF_n_Bi = 0;
+        scalar sumF_n_Bixfactor = 0;
+        scalar sumTorque_Bi = 0;
+        scalar sumTorque_Bixfactor = 0;
+
+        if (
+            (rootFactor_ == 0) and
+            (tipFactor_ == 0)
+        ){
+            // if no root and tip factor, the scale factor will be 1, so:
+            sumF_n_Bi = 1;
+            sumF_n_Bixfactor = 1;
+            sumTorque_Bi = 1;
+            sumTorque_Bixfactor = 1;
+        } else {
+            // if root or tip factor are in use, scale factor needs to be calculated
+            scalar tita_r = 0;
+            scalar tita_n_Rad = 0;
+            scalar rMed_r = 0;
+            total_nodes_counter = 0;
+            for (int ring = 0; ring <= (numberRings_); ring = ring + 1)
+            {
+                tita_r = ringTitaList_[ring];
+                rMed_r = ringrMedList_[ring];
+                for (int nodeIterator = 1; nodeIterator <= ringNodesList_[ring]; nodeIterator += 1)
+                {
+                    tita_n_Rad = 2 * M_PI * (tita_r * (nodeIterator - 1)) / 360;
+
+                    vector Bi = getNodePosition(tita_n_Rad, rMed_r, yawRad, diskPoint_, ring, numberRings_);
+                    float radius = mag(diskPoint_ - Bi);
+
+                    vector U_dPointCells = U_dNodes[total_nodes_counter];
+                    tensor transform = getNodeTransformTensor(
+                        Bi,
+                        diskPoint_,
+                        uniDiskDir_
+                    );
+                    float phi = getNodePhiAngle(
+                        transform,
+                        U_dPointCells,
+                        radius,
+                        omega
+                    );
+                    total_nodes_counter += 1;
+
+                    float xNode = radius / maxR_;
+                    float nodeArea = ringAreaList_[ring];
+
+                    gNode = rootFactorFunction(rootFactor_, xNode, rootDistance_, phi);
+                    FNode = tipFactorFunction(tipFactor_, xNode, lambda_, phi);
+
+                    sumF_n_Bi += fn * nodeArea;
+                    sumF_n_Bixfactor += gNode * FNode * fn * nodeArea;
+                    // if (ring != numberRings_) {
+                    if (xNode > 0) {
+                        sumTorque_Bi += ft * nodeArea;
+                        sumTorque_Bixfactor += gNode * FNode * ft * nodeArea;
+                    }
+                }
+            }
+        }
+        scale_factor_n = sumF_n_Bi / sumF_n_Bixfactor;
+        scale_factor_t = sumTorque_Bi / sumTorque_Bixfactor;
+
+    } else if (ADmodel_ == 1) {
         //----- Numeric AD - Navarro Diaz 2019 -------------------------------------------------------------------
         //----- Find positions in table 1 (UdAvgList) for interpolation using UdCells ----------------------------
+        Info << "" << endl;
+        Info << "Numeric AD model starting..." << endl;
         float difference = GREAT;
         if (mag(U_dCells) < UdAvgList_[0]) // if the U_d in the disc is out the table
         {
@@ -436,10 +541,12 @@ scalar Foam::fv::actuationDiskRingsV21_Source::addactuationDiskRings_AxialInerti
         Info << "q0 = " << q0 << endl; 
     } 
     else if (
-        (UrefCalculationMethod_ == 2) or
-        (UrefCalculationMethod_ == 3) or
-        (UrefCalculationMethod_ == 4)
+        (ADmodel_ == 2) or
+        (ADmodel_ == 3) or
+        (ADmodel_ == 4)
     ) {
+        Info << "" << endl;
+        Info << "Analytic AD model starting..." << endl;
         // Initialize UrefYaw with UrefYaw from previous iteration
         UrefYaw = UrefPrevious;
 
@@ -500,7 +607,7 @@ scalar Foam::fv::actuationDiskRingsV21_Source::addactuationDiskRings_AxialInerti
         Info << "omega = " << omega << endl;
         pitch = 0;
 
-        if (UrefCalculationMethod_ == 2) {
+        if (ADmodel_ == 2) {
             // q0 calculation considering uniform inflow
             // factores a1 y a2 para calcular q0 del metodo analitico
             a1 = a1Function( rootDistance_, lambda_);
@@ -587,14 +694,12 @@ scalar Foam::fv::actuationDiskRingsV21_Source::addactuationDiskRings_AxialInerti
             }
             Cp = 4 * lambda_ * q0 * integral;
         }
-        else if (UrefCalculationMethod_ == 3) {
+        else if (ADmodel_ == 3) {
             // q0 calculation for generalized inflow
             // loop through nodes to calculate the generalized a1 and a2
             a1 = 0;
             a2 = 0;
             float Cp_sum = 0;
-            float gNode;
-            float FNode;
             float xNode;
             float UrefNode;
             float nodeArea;
@@ -655,7 +760,7 @@ scalar Foam::fv::actuationDiskRingsV21_Source::addactuationDiskRings_AxialInerti
             // float realPower = omega * pow(maxR_,3) * density * q0 * Cp_sum ;
             Cp = realPower / nominalPower;
         }
-        else if (UrefCalculationMethod_ == 4) {
+        else if (ADmodel_ == 4) {
             a1 = 0;
             a2 = 0;
             a3 = 0;
@@ -666,8 +771,6 @@ scalar Foam::fv::actuationDiskRingsV21_Source::addactuationDiskRings_AxialInerti
             float b2;
             float Cp_sum = 0;
             float density = 1.225;
-            float gNode;
-            float FNode;
             float xNode;
             float UrefNode;
             float nodeArea;
@@ -851,9 +954,11 @@ scalar Foam::fv::actuationDiskRingsV21_Source::addactuationDiskRings_AxialInerti
 
     // count how many radius sections are
     int nR_ = 1;
-    while (rList_[nR_] - rList_[nR_ - 1] > 0)
-    {
-        nR_ = nR_ + 1;
+    if (ADmodel_ == 1){
+        while (rList_[nR_] - rList_[nR_ - 1] > 0)
+        {
+            nR_ = nR_ + 1;
+        }
     }
 
     // angle of the rotation in this time
@@ -870,11 +975,11 @@ scalar Foam::fv::actuationDiskRingsV21_Source::addactuationDiskRings_AxialInerti
 
     Info << "Starting loop through nodes" << endl;
     Info << " " << endl;
-    total_nodes_counter = 0;
     //----- End of initialization of parameters of loops of force calculation ------------------------------------------
 
     //--- LOOP OVER RINGS FOR FORCE CALCULATION AND DISTTIBUTION -----------------------------------------------------------------
     // loop through rings and nodes for calculating forces and distributing them
+    total_nodes_counter = 0;
     for (int ring = 0; ring <= (numberRings_); ring = ring + 1)
     {
         tita_r = ringTitaList_[ring];
@@ -997,7 +1102,16 @@ scalar Foam::fv::actuationDiskRingsV21_Source::addactuationDiskRings_AxialInerti
 
             //---- force calculation with Numeric Actuator (Navarro Diaz 2019) -----------------------------------------------
             float nodeArea;
-            if (forceCalculationMethod_ == 1) {
+            if (ADmodel_ == 0) {
+                float xNode = radius / maxR_;
+                float nodeArea = ringAreaList_[ring];
+
+                gNode = rootFactorFunction(rootFactor_, xNode, rootDistance_, phi);
+                FNode = tipFactorFunction(tipFactor_, xNode, lambda_, phi);
+
+                F_n_Bi = gNode * FNode * scale_factor_n * fn * nodeArea;
+                F_tita_Bi = gNode * FNode * scale_factor_t * ft * nodeArea;
+            } else if (ADmodel_ == 1) {
                 //---- Calculate Uinf, fn and ft for each position of table 2 for interpolation ------------------------------ 
                 posr = posrList_[ring + 1];
                 rtable = rNodeList_[ring + 1];
@@ -1049,9 +1163,11 @@ scalar Foam::fv::actuationDiskRingsV21_Source::addactuationDiskRings_AxialInerti
                 F_tita_Bi = (ft_point * ringThickness_ * 3) / ringNodesList_[ring];
                 F_tita_Bi /= density_;
             }
-            else if (forceCalculationMethod_ == 2)
+            else if (
+                (ADmodel_ == 2) or
+                (ADmodel_ == 3)
             // Analytical Actuator Disk by Sorensen 2020
-            {
+            ) {
                 U_inf_point = 2 * mag(U_dPointCells) / (1 + sqrt( 1 - Ct ));
                 x_point = radius / maxR_;
                 if (x_point == 0) {
@@ -1073,7 +1189,7 @@ scalar Foam::fv::actuationDiskRingsV21_Source::addactuationDiskRings_AxialInerti
                 F_n_Bi = fn_point / density_; // without density to the solver
                 F_tita_Bi = ft_point / density_; // without density to the solver
             }
-            else if (forceCalculationMethod_ == 3)
+            else if (ADmodel_ == 4)
             // Generalized Analytical Actuator Disk by Sorensen 2023
             {
                 U_inf_point = 2 * mag(U_dPointCells) / (1 + sqrt( 1 - Ct ));
