@@ -325,9 +325,11 @@ Foam::fv::actuationDiskRingsV21_Source::actuationDiskRingsV21_Source(
             while ((mag(rNodeList_[i] - rList_orig[posr]) < dist) && (posr < nR_orig - 1))
             {
                 dist = mag(rNodeList_[i] - rList_orig[posr]);
-                if ((rNodeList_[i] - rList_orig[posr + 1]) >= 0)
+
+                // if ((rNodeList_[i] - rList_orig[posr + 1]) >= 0)
+                if (mag(rNodeList_[i] - rList_orig[posr + 1]) < dist)
                 {
-                    posr = posr + 1;
+                    posr += 1;
                 }
             }
 
@@ -341,7 +343,8 @@ Foam::fv::actuationDiskRingsV21_Source::actuationDiskRingsV21_Source(
         {
             for (int j = 0; j < UinfOnlyList_.size(); j = j + 1)
             {
-                for (int k = 1; k < rNodeList_.size(); k = k + 1) // La posicion 0 la agregamos al final
+                // for (int k = 1; k < rNodeList_.size(); k = k + 1) // La posicion 0 la agregamos al final
+                for (int k = 0; k < rNodeList_.size(); k = k + 1) 
                 {
                     // Info << "List position: "<<i*(UinfOnlyList_.size()*rNodeList_.size())+j*(rNodeList_.size())+k << endl;
                     Uref2List_[i * (UinfOnlyList_.size() * rNodeList_.size()) + j * (rNodeList_.size()) + k] = UrefList_[i];
@@ -355,19 +358,21 @@ Foam::fv::actuationDiskRingsV21_Source::actuationDiskRingsV21_Source(
         }
 
         // we fill up the new table
-        for (int i = 0; i < UrefList_.size(); i = i + 1)
-        {
-            for (int j = 0; j < UinfOnlyList_.size(); j = j + 1)
-            {
-                int k = 0;
-                Uref2List_[i * (UinfOnlyList_.size() * rNodeList_.size()) + j * (rNodeList_.size()) + k] = UrefList_[i];
-                UinfList_[i * (UinfOnlyList_.size() * rNodeList_.size()) + j * (rNodeList_.size()) + k] = UinfOnlyList_[j];
-                rList_[i * (UinfOnlyList_.size() * rNodeList_.size()) + j * (rNodeList_.size()) + k] = rNodeList_[k];
-                UdiList_[i * (UinfOnlyList_.size() * rNodeList_.size()) + j * (rNodeList_.size()) + k] = UdiList_orig[i * (UinfOnlyList_.size() * nR_orig) + j * nR_orig + posrList_[k]] + (rNodeList_[k] - rList_orig[posrList_[k]]) * (UdiList_orig[i * (UinfOnlyList_.size() * nR_orig) + j * nR_orig + posrList_[k] + 1] - UdiList_orig[i * (UinfOnlyList_.size() * nR_orig) + j * nR_orig + posrList_[k]]) / (rList_orig[posrList_[k] + 1] - rList_orig[posrList_[k]]);
-                fnList_[i * (UinfOnlyList_.size() * rNodeList_.size()) + j * (rNodeList_.size()) + k] = fnList_[i * (UinfOnlyList_.size() * rNodeList_.size()) + j * (rNodeList_.size()) + k + rNodeList_.size() - 1] / ringNodesList_[ringNodesList_.size() - 1];
-                ftList_[i * (UinfOnlyList_.size() * rNodeList_.size()) + j * (rNodeList_.size()) + k] = 0;
-            }
-        }
+        // for (int i = 0; i < UrefList_.size(); i = i + 1)
+        // {
+        //     for (int j = 0; j < UinfOnlyList_.size(); j = j + 1)
+        //     {
+        //         int k = 0;
+        //         Uref2List_[i * (UinfOnlyList_.size() * rNodeList_.size()) + j * (rNodeList_.size()) + k] = UrefList_[i];
+        //         UinfList_[i * (UinfOnlyList_.size() * rNodeList_.size()) + j * (rNodeList_.size()) + k] = UinfOnlyList_[j];
+        //         rList_[i * (UinfOnlyList_.size() * rNodeList_.size()) + j * (rNodeList_.size()) + k] = rNodeList_[k];
+
+        //         UdiList_[i * (UinfOnlyList_.size() * rNodeList_.size()) + j * (rNodeList_.size()) + k] = UdiList_orig[i * (UinfOnlyList_.size() * nR_orig) + j * nR_orig + posrList_[k]] + (rNodeList_[k] - rList_orig[posrList_[k]]) * (UdiList_orig[i * (UinfOnlyList_.size() * nR_orig) + j * nR_orig + posrList_[k] + 1] - UdiList_orig[i * (UinfOnlyList_.size() * nR_orig) + j * nR_orig + posrList_[k]]) / (rList_orig[posrList_[k] + 1] - rList_orig[posrList_[k]]);
+
+        //         fnList_[i * (UinfOnlyList_.size() * rNodeList_.size()) + j * (rNodeList_.size()) + k] = fnList_[i * (UinfOnlyList_.size() * rNodeList_.size()) + j * (rNodeList_.size()) + k + rNodeList_.size() - 1] / ringNodesList_[ringNodesList_.size() - 1];
+        //         ftList_[i * (UinfOnlyList_.size() * rNodeList_.size()) + j * (rNodeList_.size()) + k] = 0;
+        //     }
+        // }
     }
 
     // add the center node
