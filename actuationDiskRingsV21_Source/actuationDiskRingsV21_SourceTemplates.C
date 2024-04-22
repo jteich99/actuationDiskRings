@@ -831,7 +831,7 @@ scalar Foam::fv::actuationDiskRingsV21_Source::addactuationDiskRings_AxialInerti
             b1 = lambda_ * a1 - S0 * a4;
             b2 = 0.5 * a3;
 
-            q0 = -b1 + sqrt(pow(b1,2) - 4 * b0 * b2) / (2 * b2);
+            q0 = (-b1 + sqrt(pow(b1,2) - 4 * b0 * b2)) / (2 * b2);
             // ---
 
             // Cp calculation
