@@ -327,7 +327,10 @@ Foam::fv::actuationDiskRingsV21_Source::actuationDiskRingsV21_Source(
                 dist = mag(rNodeList_[i] - rList_orig[posr]);
 
                 // if ((rNodeList_[i] - rList_orig[posr + 1]) >= 0)
-                if (mag(rNodeList_[i] - rList_orig[posr + 1]) < dist)
+                if (
+                    mag(rNodeList_[i] - rList_orig[posr + 1]) < dist and
+                    ((rNodeList_[i] - rList_orig[posr + 1]) >= 0)
+                )
                 {
                     posr += 1;
                 }
