@@ -235,6 +235,8 @@ float tipFactorFunction(
                     F = (2 / (M_PI)) * std::acos(std::exp(-g * f));
                 }
             }
+        } else if (phi == 0) {
+            F = 1; // f = 1/0 = infty, then exp(-infty)=0, then acos(0) = pi/2, then F=1
         } else {
             F = 1;
         }
