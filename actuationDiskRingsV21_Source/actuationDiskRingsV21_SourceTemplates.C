@@ -391,9 +391,18 @@ scalar Foam::fv::actuationDiskRingsV21_Source::addactuationDiskRings_AxialInerti
     scalar scale_factor_n;
     scalar scale_factor_t;
 
-    if (ADmodel_ == 0) {
-        Info << "" << endl;
-        Info << "Uniform AD model starting..." << endl;
+    if (
+        (ADmodel_ == 0) or
+        (ADmodel_ == 5)
+    ){
+        // combine uniform and eliptic ADs since both do scale factoring
+        if ( ADmodel_ == 0 ) {
+            Info << "" << endl;
+            Info << "Uniform AD model starting..." << endl;
+        } else if ( ADmodel_ == 5 ) {
+            Info << "" << endl;
+            Info << "Eliptic AD model starting..." << endl;
+        }
 
         scalar cosUinfAngle = (diskDir_[0] * uniDiskDir[0] + diskDir_[1] * uniDiskDir[1]) / (mag(diskDir_) * mag(uniDiskDir));
         UrefYaw = Uref_ * cosUinfAngle;
@@ -417,11 +426,13 @@ scalar Foam::fv::actuationDiskRingsV21_Source::addactuationDiskRings_AxialInerti
             torque = power / omega;
         }
 
-        // normal and tangentila surface forces
-        fn = thrust / diskArea_;
-        ft = (3 * torque) / (2 * M_PI * pow(maxR_, 3));
-        Info << "fn mean = " << fn << endl;
-        Info << "ft mean = " << ft << endl;
+        // uniform normal and tangential surface forces
+        if ( ADmodel_ == 0 ){
+            fn = thrust / diskArea_;
+            ft = (3 * torque) / (2 * M_PI * pow(maxR_, 3));
+            Info << "fn mean = " << fn << endl;
+            Info << "ft mean = " << ft << endl;
+        }
 
         // sums for scale factors (used if root or tip factor are in use) 
         scalar sumF_n_Bi = 0;
@@ -475,18 +486,27 @@ scalar Foam::fv::actuationDiskRingsV21_Source::addactuationDiskRings_AxialInerti
                     gNode = rootFactorFunction(rootFactor_, xNode, rootDistance_, phi);
                     FNode = tipFactorFunction(tipFactor_, xNode, lambda_, phi);
 
-                    sumF_n_Bi += fn * nodeArea;
-                    sumF_n_Bixfactor += gNode * FNode * fn * nodeArea;
-                    // if (ring != numberRings_) {
-                    if (xNode > 0) {
-                        sumTorque_Bi += ft * nodeArea;
-                        sumTorque_Bixfactor += gNode * FNode * ft * nodeArea;
+                    if ( ADmodel_ == 0 ){
+                        sumF_n_Bi += fn * nodeArea;
+                        sumF_n_Bixfactor += gNode * FNode * fn * nodeArea;
+                        if (xNode > 0) {
+                            sumTorque_Bi += ft * nodeArea;
+                            sumTorque_Bixfactor += gNode * FNode * ft * nodeArea;
+                        }
+                    } else if ( ADmodel_ == 5 ) {
+                        float density = 1.225;
+                        fn = 0.75 * density * pow(UrefYaw,2) * Ct * sqrt(1 - xNode);
+                        sumF_n_Bixfactor += gNode * fn * nodeArea;
                     }
                 }
             }
         }
-        scale_factor_n = sumF_n_Bi / sumF_n_Bixfactor;
-        scale_factor_t = sumTorque_Bi / sumTorque_Bixfactor;
+        if ( ADmodel_ == 0 ){
+            scale_factor_n = sumF_n_Bi / sumF_n_Bixfactor;
+            scale_factor_t = sumTorque_Bi / sumTorque_Bixfactor;
+        } else if ( ADmodel_ == 5 ) {
+            scale_factor_n = thrust / sumF_n_Bixfactor;
+        }
 
     } else if (ADmodel_ == 1) {
         //----- Numeric AD - Navarro Diaz 2019 -------------------------------------------------------------------
@@ -1216,6 +1236,23 @@ scalar Foam::fv::actuationDiskRingsV21_Source::addactuationDiskRings_AxialInerti
                     fn_point *= nodeArea;
                     ft_point *= nodeArea;
                 }
+
+                F_n_Bi = fn_point / density_; // without density to the solver
+                F_tita_Bi = ft_point / density_; // without density to the solver
+            }
+            else if (ADmodel_ == 5)
+            // Eliptic Actuator Disk by Sorensen 1992 
+            {
+                x_point = radius / maxR_;
+                gNode = rootFactorFunction(rootFactor_, x_point, rootDistance_, phi);
+
+                fn_point = 0.75 * density_ * pow(UrefYaw,2) * Ct * sqrt(1 - x_point);
+                ft_point = 0;
+
+                nodeArea = ringAreaList_[ring];
+
+                fn_point *= scale_factor_n * gNode * nodeArea;
+                ft_point *= nodeArea;
 
                 F_n_Bi = fn_point / density_; // without density to the solver
                 F_tita_Bi = ft_point / density_; // without density to the solver
