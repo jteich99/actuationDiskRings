@@ -93,6 +93,9 @@ namespace Foam
             //- Thrust coefficient for rated velocity
             scalar Ct_rated_;
 
+            //- Average chord length for optimum values in Gaussian force distribution 
+            scalar averageChordLength_;
+
             //- Fixed Uinf for thrust calculation
             scalar Uref_;
 
@@ -396,6 +399,12 @@ namespace Foam
             scalar Ct_rated() const
             {
                 return Ct_rated_;
+            }
+
+            //- Return averageChordLength 
+            scalar averageChordLength() const
+            {
+                return averageChordLength_;
             }
 
             //- Return Uinf

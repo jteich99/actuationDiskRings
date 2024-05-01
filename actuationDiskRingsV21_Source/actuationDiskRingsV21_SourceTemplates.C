@@ -1092,7 +1092,16 @@ scalar Foam::fv::actuationDiskRingsV21_Source::addactuationDiskRings_AxialInerti
                     weightCells[cellsDisc[c]] = (1 / (pow(E, 3) * pow(sqrt(M_PI), 3))) *
                                             exp(-1 * ( (sqrt(pow(dn,2) + pow(dr,2) + pow(dt,2))) / (E) ) );
                 }
-                else if (forceDistributionMethod_==3) {  
+                else if (forceDistributionMethod_==3) { 
+                    // force distribution using optimization from Martinez et al. 2017
+                    En = 0.17 * averageChordLength_;
+                    Er = pow(10,-2) * averageChordLength_;
+                    Et = pow(10,-2) * averageChordLength_;
+                    float s_n = - 0.36 * averageChordLength_;
+                    weightCells[cellsDisc[c]] = (1 / (En * Et * Er * pow(sqrt(M_PI), 3))) *
+                                            exp(-1 * (pow((dn - s_n) / En, 2) + pow(dt / Et, 2) + pow(dr / Er, 2)));
+                }
+                else if (forceDistributionMethod_==4) {  
                     // force distribution with delta function of Li 2022
                     float diskCellSize = 0.5 * 2 * maxR_ / cellSize_;
                     float d_cellCentre_node = mag(Pi_ntr - Bi_ntr);

@@ -133,6 +133,7 @@ Foam::fv::actuationDiskRingsV21_Source::actuationDiskRingsV21_Source(
       rootFactor_(readScalar(coeffs_.lookup("rootFactor"))),
       tipFactor_(readScalar(coeffs_.lookup("tipFactor"))),
       Ct_rated_(readScalar(coeffs_.lookup("Ct_rated"))),
+      averageChordLength_(readScalar(coeffs_.lookup("averageChordLength"))),
       nodesCellsRatio_(readScalar(coeffs_.lookup("nodesCellsRatio"))),
       rThicknessCellsizeRatio_(readScalar(coeffs_.lookup("rThicknessCellsizeRatio"))),
       powerCurve_table_(coeffs_.lookup("powerCurve_table")), 
