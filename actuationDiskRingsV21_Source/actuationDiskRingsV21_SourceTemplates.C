@@ -1090,7 +1090,7 @@ scalar Foam::fv::actuationDiskRingsV21_Source::addactuationDiskRings_AxialInerti
                 else if (forceDistributionMethod_==2) { 
                     // force distribution as proposed in Mikkelsen 2003
                     weightCells[cellsDisc[c]] = (1 / (pow(E, 3) * pow(sqrt(M_PI), 3))) *
-                                            exp(-1 * ( (sqrt(pow(dn,2) + pow(dr,2) + pow(dt,2))) / (E) ) );
+                                            exp(-1 * pow( (sqrt(pow(dn,2) + pow(dr,2) + pow(dt,2))) / (E) ,2) );
                 }
                 else if (forceDistributionMethod_==3) { 
                     // force distribution using optimization from Martinez et al. 2017
