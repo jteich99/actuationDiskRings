@@ -273,7 +273,7 @@ float rootFactorFunction(
         // else if ((x > rootDistance) and (f_tip > 0) and (x < 0.5))
         else if ((f_tip > 0) and (x < 0.5))
         {
-            scalar f = (Nb / 2) * (x - 0.1) / (x * std::sin(phi));
+            scalar f = (Nb / 2) * (x - rootDistance) / (x * std::sin(phi));
             if ((std::exp(-f) > -1) and (std::exp(-f) < 1))
             {
                 g = (2 / (M_PI)) * std::acos(std::exp(-f));
