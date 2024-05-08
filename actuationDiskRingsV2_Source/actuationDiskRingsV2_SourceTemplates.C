@@ -638,46 +638,46 @@ for (int ring =0; ring<=(numberRings_-1); ring=ring+1)
 
 
         //----BEM CALCULATIONS-------------------
-        Info <<"----BEM calculations----" << endl;
+        // Info <<"----BEM calculations----" << endl;
 
         //velocities in the profile coordinates
         U_n=-1* U_dPointCells_ntr[0];
         U_t=-1* U_dPointCells_ntr[1];
         U_r=-1* U_dPointCells_ntr[2];
-        Info << "U_n (+): " << U_n << endl;
-        Info << "U_t (+): " << U_t << endl;
-        Info << "U_r (?): " << U_r << endl;
-        Info << "U_t - radius*omega: (-) " << U_t - radius*omega << endl;
+        // Info << "U_n (+): " << U_n << endl;
+        // Info << "U_t (+): " << U_t << endl;
+        // Info << "U_r (?): " << U_r << endl;
+        // Info << "U_t - radius*omega: (-) " << U_t - radius*omega << endl;
         
         phi = Foam::atan(U_n/( radius*omega - U_t));
 
         vector Urel= vector(U_n,U_t - radius*omega,0.0);
-        Info << "Urel: " << mag(Urel) << endl;
+        // Info << "Urel: " << mag(Urel) << endl;
 
         if ( ((U_t - radius*omega) <= 0) and (U_n >= 0) )
 			{
-				 Info << "case 1) (U_t - radius*omega)(-) and U_z(+) (most common case)"  << endl;
+				 // Info << "case 1) (U_t - radius*omega)(-) and U_z(+) (most common case)"  << endl;
 			}
 
         if ( ((U_t - radius*omega) <= 0) and (U_n < 0) )
 			{
-				 Info << "case 3) (U_t - radius*omega)(-) and U_z(-)"  << endl;
+				 // Info << "case 3) (U_t - radius*omega)(-) and U_z(-)"  << endl;
 			}
 
 
         if ( ((U_t - radius*omega) > 0) and (U_n >= 0) )
 			{
-				 Info << "case 2) (U_t - radius*omega)(+) and U_z(+)"  << endl;
+				 // Info << "case 2) (U_t - radius*omega)(+) and U_z(+)"  << endl;
 				 phi =	phi + M_PI;
 			}
 
         if ( ((U_t - radius*omega) > 0) and (U_n < 0) )
 			{
-				 Info << "case 4) (U_t - radius*omega)(+) and U_z(-)"  << endl;
+				 // Info << "case 4) (U_t - radius*omega)(+) and U_z(-)"  << endl;
 				 phi =	phi - M_PI;
 			}
 
-		Info << "phi angle (deg) " <<  phi*360/(2*M_PI) << endl;
+		// Info << "phi angle (deg) " <<  phi*360/(2*M_PI) << endl;
 
         scalar twist = 0.0;
         scalar chord = 0.0;
@@ -688,19 +688,19 @@ for (int ring =0; ring<=(numberRings_-1); ring=ring+1)
 
         beta = pitch + twist;
 	
-        Info << "twist (deg) " <<  twist*360/(2*M_PI) << endl;	
-        Info << "beta (deg) " <<  beta*360/(2*M_PI) << endl;
-    	Info << "chord (m) " <<  chord << endl;
+     //    Info << "twist (deg) " <<  twist*360/(2*M_PI) << endl;	
+     //    Info << "beta (deg) " <<  beta*360/(2*M_PI) << endl;
+    	// Info << "chord (m) " <<  chord << endl;
 
         if (omega < 0)
         {
-            Info << "omega is negative "  << endl;
+            // Info << "omega is negative "  << endl;
             beta = M_PI - beta;
-            Info << "beta = M_PI - beta = " <<  beta << endl;
+            // Info << "beta = M_PI - beta = " <<  beta << endl;
         }
 
         alpha = phi - beta;
-        Info << "alpha (local attack angle) (deg) " <<  alpha*360/(2*M_PI) << endl;
+        // Info << "alpha (local attack angle) (deg) " <<  alpha*360/(2*M_PI) << endl;
 
 	    chordList.append(chord);
 	    betaList.append(beta*360/(2*M_PI));
@@ -725,14 +725,14 @@ for (int ring =0; ring<=(numberRings_-1); ring=ring+1)
 
         scalar Cd = invDr*(Cd2 - Cd1) + Cd1;
         scalar Cl = invDr*(Cl2 - Cl1) + Cl1;
-        Info << "Cd:" <<  Cd<< endl;
-        Info << "Cl:" <<  Cl << endl;
+        // Info << "Cd:" <<  Cd<< endl;
+        // Info << "Cl:" <<  Cl << endl;
 
         //total force [N]
         F_Bi = ringThickness_*0.5*pow(mag(Urel),2)*chord*3/ringNodesList_[ring];
 	//apply a correction factor compare to other authors results
 	//F_Bi=0.9*F_Bi;
-        Info << "total force F_Bi "<< F_Bi << endl;
+        // Info << "total force F_Bi "<< F_Bi << endl;
 
         //Shen tip correction factor:
         scalar fcorr=0.0;
@@ -742,7 +742,7 @@ for (int ring =0; ring<=(numberRings_-1); ring=ring+1)
         scalar c3=0.1;
         scalar g =1;
         scalar tipfactor_f = (nblades_/2)*(maxR - radius)/(radius*sin(phi));
-        Info << "tipfactor_f " << tipfactor_f << endl;
+        // Info << "tipfactor_f " << tipfactor_f << endl;
         g=exp(-c1*(nblades_*tsr-c2))+c3;
         if (tipfactor_f > 0)
                 {
@@ -752,14 +752,14 @@ for (int ring =0; ring<=(numberRings_-1); ring=ring+1)
                         }
                 }
 
-        Info << "tipfactor: "<<tipfactor<<endl;
+        // Info << "tipfactor: "<<tipfactor<<endl;
 
 	F_n_Bi = tipfactor*(F_Bi*Cl*cos(phi) + F_Bi*Cd*sin(phi));
-        Info<< "BEM normal force [N] in the point section " << F_n_Bi << endl;
+        // Info<< "BEM normal force [N] in the point section " << F_n_Bi << endl;
 
 	// Tangential and axial forces
 	F_tita_Bi = tipfactor*(F_Bi*Cl*sin(phi) - F_Bi*Cd*cos(phi));
-        Info<< "BEM tangential force [N] in the point section " << F_tita_Bi << endl;
+        // Info<< "BEM tangential force [N] in the point section " << F_tita_Bi << endl;
 
 	//if (nodeIterator ==1)
 	//{
@@ -773,7 +773,7 @@ for (int ring =0; ring<=(numberRings_-1); ring=ring+1)
 	    Pcells += mag(diskPoint_-Bi)*F_tita_Bi*density_*omega;
 
 
-        Info<< "-----BEM finished ----- " << endl;
+        // Info<< "-----BEM finished ----- " << endl;
 
         //loop over all the cells to apply source
         forAll(cellsDisc,c)
@@ -869,8 +869,8 @@ if (Pstream::myProcNo() == 0 and t > 0) //if Im in the master proccesor and from
     int i = 0;
 	//nodes
     //for each ring
-    Info << "FnList" << endl;
-    Info << FnList << endl;
+    // Info << "FnList" << endl;
+    // Info << FnList << endl;
 
     for (int ring =0; ring<=(numberRings_); ring=ring+1)
     {
