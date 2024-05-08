@@ -2,23 +2,32 @@
 
 # backlog
 ## actuadores
-- [ ] revisar AD analitico original por potencial error
 - [ ] incorporar AD de van Der Laan 2015
+- [ ] incoporar computo de fuerzas en la góndola por separado
 
 ## distribución de fuerzas
-- [ ] incorporar distribución de fuerzas de Martínez Tossas 2017 
 - [ ] hacer que sea una función como con los tip y root factor para tener menos clutter en el código
 
 ## velocidades
-- [ ] incorporar correción de velocidad promedio en disco de Li 2022
 - [ ] incorporar medicion de velocidad aguas abajo y aguas arriba
 
 ## funcional
 - [ ] migrar el actuador a fuera de las carpetas de instalación y a la carpeta de usuario
+- [ ] implementar Ct de funcion analítica como alternativa a la power curve
 
 
 
 # done
+## 06-05
+- [x] incorporar correción de velocidad promedio en disco de Li 2022
+## 02-05
+- [x] incorporar distribución de fuerzas de Martínez Tossas 2017 
+    - [x] agregar en fvOptions que se ponga la distancia promedio de cuerda
+    - [x] poner kernel anisotrópico
+## 29-04
+- [x] revisar AD analitico original por potencial error
+    - [x] corregir que use las nuevas funciones para root y tip factor y no las viejas gFunction y FFunction
+    - lo que traia el error era usar U0 del nodo en las cuentas y no la U0 global o Uref
 ## 04-25
 - [x] corregir generación de tablas del V11_Source a partir d ela tabla de calibración 
 - [x] agregar factor de corrección para tener empuje total al AD eliptico
@@ -28,7 +37,7 @@
 ## 04-18
 - [x] incorporar AD uniforme
 ## 04-17
-- [x] incorporar AD analitico generalizado de Sorensen 2023
+- [x] incorporar AD analitico generalizado de Sorensen 2024
 - [x] renombrar las opciones UrefCalculationMethod y forceCalculationMethod a ADmodel para que sea más sencilla la configuración del fvOptions
 ## 04-16
 - [x] hacer funciones de tip y root factor para reemplazar g y F en el actuador analítico, que tomen el tip y root factor especificado en el fvOptions
