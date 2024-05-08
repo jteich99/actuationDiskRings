@@ -19,14 +19,14 @@ Description
 
     Constant values for momentum source for actuation disk
     \f[
-    T = 0.5 \rho A U_{inf}^2 Ct
+	T = 0.5 \rho A U_{inf}^2 Ct
     \f]
 
     where:
     \vartable
         A   	| disk area
         U_inf 	| upstream velocity
-        Ct	| thrust coeficient
+		Ct	| thrust coeficient
     \endvartable
 
     \heading Source usage
@@ -38,10 +38,10 @@ Description
         fieldNames      (U);        	// names of fields to apply source
         diskDir         (-1 0 0);   	// disk direction
         Ct              0.5;        	// thrust coefficient
-    Cp		0.4;	   	// power coefficient
+	Cp		0.4;	   	// power coefficient
         diskArea        5.0;        	// disk area
         upstreamPoint   (0 0 0);    	// upstream point
-    diskPoint   	(1 0 0);    	// upstream point
+	diskPoint   	(1 0 0);    	// upstream point
     }
     \endverbatim
 
@@ -56,7 +56,7 @@ SourceFiles
 #define actuationDiskRingsV11_Source_H
 
 #include "cellSetOption.H"
-// #include "fvOption.H" //---new line
+//#include "fvOption.H" //---new line
 #include "bladeModel.H"
 #include "profileModelList.H"
 #include <fstream>
@@ -66,287 +66,284 @@ SourceFiles
 
 namespace Foam
 {
-    namespace fv
-    {
+namespace fv
+{
 
-        /*---------------------------------------------------------------------------*\
-                             Class actuationDiskRingsV11_Source Declaration
-        \*---------------------------------------------------------------------------*/
+/*---------------------------------------------------------------------------*\
+                     Class actuationDiskRingsV11_Source Declaration
+\*---------------------------------------------------------------------------*/
 
-        class actuationDiskRingsV11_Source
-            : public cellSetOption
-        // public option //---new line
-        {
+class actuationDiskRingsV11_Source
+:
+    public cellSetOption
+    //public option //---new line
+{
 
-        protected:
-            // Protected data
+protected:
 
-            //- Disk area normal
-            vector diskDir_;
+    // Protected data
 
-            //- Power coefficient
-            scalar Cp_;
+        //- Disk area normal
+        vector diskDir_;
 
-            //- Thrust coefficient
-            scalar Ct_;
+        //- Power coefficient
+        scalar Cp_;
 
-            //- Fixed Uinf for thrust calculation
-            scalar Uref_;
+        //- Thrust coefficient
+        scalar Ct_;
 
-            //- cell size in the disc
-            scalar cellSize_;
+	    //- Fixed Uinf for thrust calculation
+        scalar Uref_;
 
-            //- Fixed yaw angle compared to the inlet velocity vector
-            scalar yaw_;
+        //- cell size in the disc
+        scalar cellSize_;
 
-            //- Fixed rotational velocity [rad/s]
-            scalar omega_;
+        //- Fixed yaw angle compared to the inlet velocity vector
+        scalar yaw_;
 
-            //- Fixed pitch angle [deg]
-            scalar pitch_;
+        //- Fixed rotational velocity [rad/s]
+        scalar omega_;
 
-            //- Disk area
-            scalar diskArea_;
+        //- Fixed pitch angle [deg]
+        scalar pitch_;
 
-            //- Disc center point sample
-            point diskPoint_;
+        //- Disk area
+        scalar diskArea_;
 
-            //- Root factor on/off
-            scalar rootFactor_;
+    	//- Disc center point sample
+        point diskPoint_;
 
-            //- Tip factor on/off
-            scalar tipFactor_;
+        //- Root factor on/off
+        scalar rootFactor_;
 
-            //- Ratio Total amount of nodes / CellsInAD
-            scalar nodesCellsRatio_;
+        //- Tip factor on/off
+        scalar tipFactor_;
+        
+        //- Ratio Total amount of nodes / CellsInAD
+        scalar nodesCellsRatio_;
+        
+        //Ratio ring Thickness / cellSize   
+        scalar rThicknessCellsizeRatio_;
+        
+        //Interpolation by means of Grad(U).
+        scalar gradInterpolation_; 
 
-            // Ratio ring Thickness / cellSize
-            scalar rThicknessCellsizeRatio_;
+	    //- disk cell ID
+        label diskCellId_;
 
-            // Interpolation by means of Grad(U).
-            scalar gradInterpolation_;
+	    //--test--------------------------------------
+	    //the permanent variables have "_" in the end
 
-            //- disk cell ID
-            label diskCellId_;
+        //for calculating number of rings and nodes
+        
+        //Root distance, % of R
+        scalar rootDistance_;
 
-            //--test--------------------------------------
-            // the permanent variables have "_" in the end
+        //AD radius
+        scalar maxR_;
 
-            // for calculating number of rings and nodes
+        //Cells in the AD
+        scalar cellsInAd_;
 
-            // Root distance, % of R
-            scalar rootDistance_;
+        //Estimated nodes
+        scalar estimatedNodes_;
 
-            // AD radius
-            scalar maxR_;
+        //Aproximate are associated to each node
+        scalar secArea_;
 
-            // Cells in the AD
-            scalar cellsInAd_;
+        //Internal radius of the AD, inside there is only 1 node.
+        scalar rInt_;        
 
-            // Estimated nodes
-            scalar estimatedNodes_;
+        //External radius of the AD, equal to maxR_ 
+        scalar rExt_;
 
-            // Aproximate are associated to each node
-            scalar secArea_;
+        //Thickness of all rings
+        scalar ringThickness_;
 
-            // Internal radius of the AD, inside there is only 1 node.
-            scalar rInt_;
+        //Number of rings
+        int numberRings_;
 
-            // External radius of the AD, equal to maxR_
-            scalar rExt_;
+        //Total nodes in the AD
+        scalar nodesNumber_;
+        
+        //Nodes in each ring
+        scalar nodesI_;
 
-            // Thickness of all rings
-            scalar ringThickness_;
+        //Angle between nodes - deg
+        scalar titaI_;
 
-            // Number of rings
-            int numberRings_;
+        //Radius of each ring
+        scalar rMedI_;
 
-            // Total nodes in the AD
-            scalar nodesNumber_;
+        //sectional area of each ring
+        scalar areaI_;
 
-            // Nodes in each ring
-            scalar nodesI_;
+        //Lists of nodes, angle between nodes and radius of each ring.
+        DynamicList<scalar> ringNodesList_;
+        DynamicList<scalar> ringTitaList_;
+        DynamicList<scalar> ringrMedList_;
+        DynamicList<scalar> ringAreaList_;
 
-            // Angle between nodes - deg
-            scalar titaI_;
+	    //direction of the disc
+	    scalar yawRad_;
+	    vector diskYawed_;
+	    vector uniDiskDir_;
+	    
+        //For calculating node positions
+        //angle between nodes in a certain ring         
+        scalar tita_r_;
+        
+        //angle for the position of a certain node
+        scalar tita_n_Rad_;
 
-            // Radius of each ring
-            scalar rMedI_;
+        //radius for a certain ring
+        scalar rMed_r_;
 
-            // sectional area of each ring
-            scalar areaI_;
+        //Nodes counter
+        scalar total_nodes_counter_;
 
-            // Lists of nodes, angle between nodes and radius of each ring.
-            DynamicList<scalar> ringNodesList_;
-            DynamicList<scalar> ringTitaList_;
-            DynamicList<scalar> ringrMedList_;
-            DynamicList<scalar> ringAreaList_;
+	    //List of cell ID for each node
+	    List<label> nodeCellID_;
 
-            // direction of the disc
-            scalar yawRad_;
-            vector diskYawed_;
-            vector uniDiskDir_;
+    //- UdAvg_table
+        //List<Tuple2<vector, vector>> UdAvg_table_;
+        List<Tuple2<vector, vector> > UdAvg_table_; //--- new line
 
-            // For calculating node positions
-            // angle between nodes in a certain ring
-            scalar tita_r_;
+    //- UrefList
+        List<scalar> UrefList_;
 
-            // angle for the position of a certain node
-            scalar tita_n_Rad_;
+    //- omegaList
+        List<scalar> omegaList_;
 
-            // radius for a certain ring
-            scalar rMed_r_;
+    //- pitchList
+        List<scalar> pitchList_;
 
-            // Nodes counter
-            scalar total_nodes_counter_;
+    //- UdAvgList
+        List<scalar> UdAvgList_;
 
-            // ratio to consider in center of AD
-            scalar centerRatio_;
+    //- CtList
+        List<scalar> CtList_;
 
-            // method to measure Velocity Ud
-            //   - 0 = sum directly values in cells in AD
-            //   - 1 = weight with Gaussian in distance to AD plane
-            //   - 2 = weight with Gaussian in distance to AD plane + distance to center of AD
-            scalar UdCellsMethod_;
+    //- CpList
+        List<scalar> CpList_;
 
-            // toggle for measuring Ud with center of AD
-            //   - 0 = use all of AD
-            //   - 1 = use center of AD with centerRatio
-            scalar UdCenterToggle_;
+	//- Udi_table
+        //List<Tuple2<vector, vector>> Udi_table_;
+    	List<Tuple2<vector, vector> > Udi_table_; //--- new line
 
-            scalar forceDistributionMethod_;
+    //- Original lists
+	//- Uref2List original
+        List<scalar> Uref2List_orig;
 
-            // List of cell ID for each node
-            List<label> nodeCellID_;
+	//- UinfList original
+        List<scalar> UinfList_orig;
 
-            //- UdAvg_table
-            // List<Tuple2<vector, vector>> UdAvg_table_;
-            List<Tuple2<vector, vector>> UdAvg_table_; //--- new line
+	//- rList original
+        List<scalar> rList_orig;
 
-            //- UrefList
-            List<scalar> UrefList_;
+	//- UdiList original
+        List<scalar> UdiList_orig;
 
-            //- omegaList
-            List<scalar> omegaList_;
+	//- fnList original
+        List<scalar> fnList_orig;
 
-            //- pitchList
-            List<scalar> pitchList_;
+	//- ftList original
+        List<scalar> ftList_orig;
 
-            //- UdAvgList
-            List<scalar> UdAvgList_;
+    //- Interpolated lists
+	//- Uref2List
+        List<scalar> Uref2List_;
 
-            //- CtList
-            List<scalar> CtList_;
+	//- UinfList
+        List<scalar> UinfList_;
 
-            //- CpList
-            List<scalar> CpList_;
+	//- rList
+        List<scalar> rList_;
 
-            //- Udi_table
-            // List<Tuple2<vector, vector>> Udi_table_;
-            List<Tuple2<vector, vector>> Udi_table_; //--- new line
+	//- UdiList
+        List<scalar> UdiList_;
 
-            //- Original lists
-            //- Uref2List original
-            List<scalar> Uref2List_orig;
+	//- fnList
+        List<scalar> fnList_;
 
-            //- UinfList original
-            List<scalar> UinfList_orig;
+	//- ftList
+        List<scalar> ftList_;
 
-            //- rList original
-            List<scalar> rList_orig;
+	//- list for r positions in the original table
+        List<scalar> posrList_;
+        
+    //- list por node radial positions
+        DynamicList<scalar> UinfOnlyList_;
+        
+    //- Uinf legnth in table    
+        scalar UinfLength_;
 
-            //- UdiList original
-            List<scalar> UdiList_orig;
+    //- list por node radial positions
+        DynamicList<scalar> rNodeList_;
 
-            //- fnList original
-            List<scalar> fnList_orig;
+	//--------------------------------------------
 
-            //- ftList original
-            List<scalar> ftList_orig;
+private:
 
-            //- Interpolated lists
-            //- Uref2List
-            List<scalar> Uref2List_;
+    // Private Member Functions
 
-            //- UinfList
-            List<scalar> UinfList_;
+        //- Check data
+        void checkData() const;
 
-            //- rList
-            List<scalar> rList_;
+        //- Add resistance to the UEqn
+        template<class RhoFieldType>
+        void addactuationDiskRings_AxialInertialResistance
+        (
+            vectorField& Usource,
+            const labelList& cells,
+            const scalarField& V,
+            const RhoFieldType& rho,
+            const vectorField& U,
+            vectorField& force
+        ) const;
 
-            //- UdiList
-            List<scalar> UdiList_;
 
-            //- fnList
-            List<scalar> fnList_;
+        //- Disallow default bitwise copy construct
+        actuationDiskRingsV11_Source(const actuationDiskRingsV11_Source&);
 
-            //- ftList
-            List<scalar> ftList_;
+        //- Disallow default bitwise assignment
+        void operator=(const actuationDiskRingsV11_Source&);
+		
+	//- turbines output file 
+	std::ofstream * outTurbines;
 
-            //- list for r positions in the original table
-            List<scalar> posrList_;
+	//- blades output file 
+	std::ofstream * outRings;
+	
+	//- New Calibration table output
+	std::ofstream * outListFvOptions;
 
-            //- list por node radial positions
-            DynamicList<scalar> UinfOnlyList_;
 
-            //- Uinf legnth in table
-            scalar UinfLength_;
+public:
 
-            //- list por node radial positions
-            DynamicList<scalar> rNodeList_;
+    //- Runtime type information
+    TypeName("actuationDiskRingsV11_Source");
 
-            //--------------------------------------------
 
-        private:
-            // Private Member Functions
+    // Constructors
 
-            //- Check data
-            void checkData() const;
+        //- Construct from components
+        actuationDiskRingsV11_Source
+        (
+            const word& name,
+            const word& modelType,
+            const dictionary& dict,
+            const fvMesh& mesh
+        );
 
-            //- Add resistance to the UEqn
-            template <class RhoFieldType>
-            void addactuationDiskRings_AxialInertialResistance(
-                vectorField &Usource,
-                const labelList &cells,
-                const scalarField &V,
-                const RhoFieldType &rho,
-                const vectorField &U,
-                vectorField &force) const;
 
-            //- Disallow default bitwise copy construct
-            actuationDiskRingsV11_Source(const actuationDiskRingsV11_Source &);
+    //- Destructor
+    ~actuationDiskRingsV11_Source(); 
 
-            //- Disallow default bitwise assignment
-            void operator=(const actuationDiskRingsV11_Source &);
 
-            //- turbines output file
-            std::ofstream *outTurbines;
+    // Member Functions
 
-            //- blades output file
-            std::ofstream *outRings;
-
-            //- New Calibration table output
-            std::ofstream *outListFvOptions;
-
-        public:
-            //- Runtime type information
-            TypeName("actuationDiskRingsV11_Source");
-
-            // Constructors
-
-            //- Construct from components
-            actuationDiskRingsV11_Source(
-                const word &name,
-                const word &modelType,
-                const dictionary &dict,
-                const fvMesh &mesh);
-
-            //- Destructor
-            ~actuationDiskRingsV11_Source();
-
-            // Member Functions
-
-            // Access
+        // Access
             //- Return Cp
             scalar Cp() const
             {
@@ -359,7 +356,7 @@ namespace Foam
                 return Ct_;
             }
 
-            //- Return Uinf
+	    //- Return Uinf
             scalar Uinf() const
             {
                 return Uref_;
@@ -377,46 +374,49 @@ namespace Foam
                 return yaw_;
             }
 
+
             //- Return pitch
             scalar pitch() const
             {
                 return pitch_;
             }
 
-            //- Return omega
+			//- Return omega
             scalar omega() const
             {
                 return omega_;
             }
 
-            //- Return rootFactor
+			//- Return rootFactor
             scalar rootFactor() const
             {
                 return rootFactor_;
             }
 
-            //- Return tipFactor
+			//- Return tipFactor
             scalar tipFactor() const
             {
                 return tipFactor_;
             }
 
+
             //- table with UdAvg_table
-            // List<Tuple2<vector, vector>> UdAvg_table() const
-            List<Tuple2<vector, vector>> UdAvg_table() const //---new line
+            //List<Tuple2<vector, vector>> UdAvg_table() const
+            List<Tuple2<vector, vector> > UdAvg_table() const //---new line
             {
                 return UdAvg_table_;
             }
 
-            //- table with Udi_table
-            // List<Tuple2<vector, vector>> Udi_table() const
-            List<Tuple2<vector, vector>> Udi_table() const //---new line
+	    //- table with Udi_table
+            //List<Tuple2<vector, vector>> Udi_table() const
+            List<Tuple2<vector, vector> > Udi_table() const //---new line
             {
                 return Udi_table_;
             }
 
+
             //- Normal disk direction
-            const vector &diskDir() const
+            const vector& diskDir() const
             {
                 return diskDir_;
             }
@@ -427,57 +427,40 @@ namespace Foam
                 return diskArea_;
             }
 
-            //- method to measure Ud
-            //  - 0 = sum directly values in cells in AD
-            //  - 1 = weight with Gaussian in distance to AD plane
-            //  - 2 = weight with Gaussian in distance to AD plane + distance to center of AD
-            scalar UdCellsMethod() const
-            {
-                return UdCellsMethod_;
-            }
-
-            //- toggle for measuring Ud with center of AD
-            //  - 0 = use all of AD
-            //  - 1 = use center of AD with centerRatio
-            scalar UdCenterToggle() const
-            {
-                return UdCenterToggle_;
-            }
-
-            //- ratio to consider in center of AD
-            scalar centerRatio() const
-            {
-                return centerRatio_;
-            }
-
-            // Add explicit and implicit contributions
+         // Add explicit and implicit contributions
 
             //- Source term to momentum equation
-            virtual void addSup(
-                fvMatrix<vector> &eqn,
-                const label fieldI);
+            virtual void addSup
+            (
+                fvMatrix<vector>& eqn,
+                const label fieldI
+            );
 
             //- Source term to compressible momentum equation
-            virtual void addSup(
-                const volScalarField &rho,
-                fvMatrix<vector> &eqn,
-                const label fieldI);
+            virtual void addSup
+            (
+                const volScalarField& rho,
+                fvMatrix<vector>& eqn,
+                const label fieldI
+            );
 
-            // IO
+        // IO
 
             //- Read dictionary
-            virtual bool read(const dictionary &dict);
-        };
+            virtual bool read(const dictionary& dict);
 
-        // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+};
 
-    } // End namespace fv
+
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+} // End namespace fv
 } // End namespace Foam
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 #ifdef NoRepository
-#include "actuationDiskRingsV11_SourceTemplates.C"
+#   include "actuationDiskRingsV11_SourceTemplates.C"
 #endif
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //

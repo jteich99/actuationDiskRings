@@ -73,7 +73,7 @@ disk1
         rThicknessCellsizeRatio  0.5;//Ratio ring Thickness / cellSize
         density     1.225;          //kg/m3. 1.225 means air   
         gradInterpolation  1;       //1-On, 0-Off
-        //#include        "./system/listfvOptions_actuationDiskV11_Source.txt"
+        #include        "./system/listfvOptions_actuationDiskV11_Source.txt"
     }
 }
 
