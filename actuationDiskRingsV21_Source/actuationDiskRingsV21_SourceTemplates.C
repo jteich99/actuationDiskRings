@@ -71,7 +71,8 @@ scalar Foam::fv::actuationDiskRingsV21_Source::addactuationDiskRings_AxialInerti
     const vectorField &U,
     // vectorField &force) const
     vectorField &force,
-    scalar &UrefPrevious) const
+    // scalar &UrefPrevious) const
+    scalar &CtPrevious) const
 {
 
     //------------------//Information of the actuator line---------------------------
@@ -296,6 +297,14 @@ scalar Foam::fv::actuationDiskRingsV21_Source::addactuationDiskRings_AxialInerti
     scalar cosU_dCells = (U_dCells[0] * uniDiskDir[0] + U_dCells[1] * uniDiskDir[1]) / (mag(U_dCells) * mag(uniDiskDir));
     scalar U_dCellsYaw = mag(U_dCells) * cosU_dCells;
 
+    if (UdCorrection_ == 1) {
+        // scalar axialInductionFactor = 0.5 - 0.5 * sqrt(1 - Ct);
+        scalar axialInductionFactor = 0.5 - 0.5 * sqrt(1 - CtPrevious);
+        float Ct_modified = CtPrevious / pow(1 - axialInductionFactor,2);
+        scalar correctionScalar = pow( 1 + ( Ct_modified * E )/(2 * sqrt(2 * M_PI) * maxR_) ,-1);
+        U_dCellsYaw *= correctionScalar;
+    }
+
     Info << "U_dCenterCells not yawed: " << mag(U_dCenterCells) << endl;
     Info << "U_dCells not yawed: " << mag(U_dCells) << endl;
     Info << "U_dCells yawed: " << U_dCellsYaw << endl;
@@ -305,6 +314,7 @@ scalar Foam::fv::actuationDiskRingsV21_Source::addactuationDiskRings_AxialInerti
     scalar t = mesh().time().value();
     const volVectorField &U_ = mesh().lookupObject<volVectorField>("U");
     volTensorField gradU = fvc::grad(U_);
+
     DynamicList<vector> U_dNodes;
     scalar tita_r = 0;              // angle between nodes in a certain ring
     scalar tita_n_Rad = 0;          // angle for the position of a certain node - rad
@@ -564,8 +574,12 @@ scalar Foam::fv::actuationDiskRingsV21_Source::addactuationDiskRings_AxialInerti
     ) {
         Info << "" << endl;
         Info << "Analytic AD model starting..." << endl;
+
         // Initialize UrefYaw with UrefYaw from previous iteration
-        UrefYaw = UrefPrevious;
+        // UrefYaw = UrefPrevious;
+
+        // Initialize UrefYaw with Ct from previous iteration
+        UrefYaw = 2 * mag(U_dCellsYaw) / (1 + sqrt(1 - CtPrevious));
 
         scalar UrefYawOld = UrefYaw;
         scalar UrefYawOld2 = UrefYawOld;
@@ -620,7 +634,7 @@ scalar Foam::fv::actuationDiskRingsV21_Source::addactuationDiskRings_AxialInerti
         Info << "UrefYaw = " << UrefYaw << endl;
         Info << "Ct = " << Ct << endl;
         Info << "lambda_ = " << lambda_ << endl;
-        omega = lambda_ * UrefPrevious / maxR_;
+        omega = lambda_ * UrefYaw / maxR_;
         Info << "omega = " << omega << endl;
         pitch = 0;
 
@@ -1381,6 +1395,14 @@ scalar Foam::fv::actuationDiskRingsV21_Source::addactuationDiskRings_AxialInerti
         (*outRings) << std::endl;
     }
 
-    return UrefYaw;
+    // return UrefYaw;
+    if (
+        (ADmodel_ == 0) or
+        (ADmodel_ == 5)
+    ){
+        return CtPrevious;
+    } else {
+        return Ct;
+    }
 }
 // ************************************************************************* //

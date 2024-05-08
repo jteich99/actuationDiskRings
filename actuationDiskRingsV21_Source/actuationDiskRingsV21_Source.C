@@ -128,6 +128,7 @@ Foam::fv::actuationDiskRingsV21_Source::actuationDiskRingsV21_Source(
       diskPoint_(coeffs_.lookup("diskPoint")),
       UdCellsMethod_(readScalar(coeffs_.lookup("UdCellsMethod"))),
       UdCenterToggle_(readScalar(coeffs_.lookup("UdCenterToggle"))),
+      UdCorrection_(readScalar(coeffs_.lookup("UdCorrection"))),
       forceDistributionMethod_(readScalar(coeffs_.lookup("forceDistributionMethod"))),
       ADmodel_(readScalar(coeffs_.lookup("ADmodel"))),
       rootFactor_(readScalar(coeffs_.lookup("rootFactor"))),
@@ -424,35 +425,14 @@ Foam::fv::actuationDiskRingsV21_Source::actuationDiskRingsV21_Source(
 
             tita_n_Rad_ = 2 * M_PI * (tita_r_ * (nodeIterator - 1)) / 360;
 
-            // Info << "tita_n_Rad_: "<< tita_n_Rad_<< endl;
-            // Info << "yawRad_: "<< yawRad_<< endl;
-
-            // position of the node
-            scalar x_node_ = -1 * rMed_r_ * sin(tita_n_Rad_) * sin(yawRad_);
-            scalar y_node_ = rMed_r_ * sin(tita_n_Rad_) * cos(yawRad_);
-            scalar z_node_ = rMed_r_ * cos(tita_n_Rad_);
-
-            // IMPORTANTE PARA EL CALCULO DE LA POSICION HICIMOS ALGO ANÁLOGO A COORDENADAS CILINDRICAS
-            // Y PARA QUE ESTO VALGA SI O SI SE DEBE CUMPLIR QUE EL YAW ANGLE VAYA ENTRE 0 Y 180 GRADOS.
-            // VAMOS CON ESA.
-
-            // move to turbine position
-            x_node_ = x_node_ + diskPoint_[0];
-            y_node_ = y_node_ + diskPoint_[1];
-            z_node_ = z_node_ + diskPoint_[2];
-
-            vector Bi_ = vector(x_node_, y_node_, z_node_);
-
-            // Info << "Bi_: "<< Bi_ << endl;
+            vector Bi_ = getNodePosition(tita_n_Rad_, rMed_r_, yawRad_, diskPoint_, ring, numberRings_);
 
             // fin the closest cell in all the domain
             diskCellId_ = mesh.findCell(Bi_);
-            // reduce(diskCellId_ , maxOp<label>());
+            reduce(diskCellId_, maxOp<label>());
 
             nodeCellID_[total_nodes_counter_] = diskCellId_;
 
-            reduce(diskCellId_, maxOp<label>());
-            // Info << "diskCellId_: "<< diskCellId_ << endl;
             total_nodes_counter_ += 1;
 
         } // close node loop
@@ -509,7 +489,7 @@ Foam::fv::actuationDiskRingsV21_Source::actuationDiskRingsV21_Source(
 
 // * * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * //
 
-scalar UrefPrevious;
+scalar CtPrevious;
 // void Foam::fv::actuationDiskRingsV21_Source::addSup(
 void Foam::fv::actuationDiskRingsV21_Source::addSup(
     fvMatrix<vector> &eqn,
@@ -535,16 +515,16 @@ void Foam::fv::actuationDiskRingsV21_Source::addSup(
     if (mesh().time().value() == 1)
     {
         // UrefPrevious = Uinf() * 1.1;
-        UrefPrevious = Uinf();
+        CtPrevious = Ct();
     }
-    Info << "UrefPrevious = " << UrefPrevious << endl;
+    Info << "CtPrevious = " << CtPrevious << endl;
     // scalar UrefPrevious = Uinf();
 
     if (V() > VSMALL)
     {
         // addactuationDiskRings_AxialInertialResistance(
         // scalar Uref = addactuationDiskRings_AxialInertialResistance(
-        UrefPrevious = addactuationDiskRings_AxialInertialResistance(
+        CtPrevious = addactuationDiskRings_AxialInertialResistance(
             Usource,
             cells_,
             cellsV,
@@ -552,7 +532,7 @@ void Foam::fv::actuationDiskRingsV21_Source::addSup(
             U,
             // force);
             force,
-            UrefPrevious);
+            CtPrevious);
         // UrefPrevious = Uref;
     }
 
@@ -588,16 +568,16 @@ void Foam::fv::actuationDiskRingsV21_Source::addSup(
     if (mesh().time().value() == 1)
     {
         // UrefPrevious = Uinf() * 1.1;
-        UrefPrevious = Uinf();
+        CtPrevious = Ct();
     }
-    Info << "UrefPrevious = " << UrefPrevious << endl;
+    Info << "CtPrevious = " << CtPrevious << endl;
     // scalar UrefPrevious = Uinf();
 
     if (V() > VSMALL)
     {
         // addactuationDiskRings_AxialInertialResistance(
         // scalar Uref = addactuationDiskRings_AxialInertialResistance(
-        UrefPrevious = addactuationDiskRings_AxialInertialResistance(
+        CtPrevious = addactuationDiskRings_AxialInertialResistance(
             Usource,
             cells_,
             cellsV,
@@ -605,7 +585,7 @@ void Foam::fv::actuationDiskRingsV21_Source::addSup(
             U,
             // force);
             force,
-            UrefPrevious);
+            CtPrevious);
         // UrefPrevious = Uref;
     }
 
@@ -640,6 +620,7 @@ bool Foam::fv::actuationDiskRingsV21_Source::read(const dictionary &dict)
         coeffs_.readIfPresent("gradInterpolation", gradInterpolation_);
         coeffs_.readIfPresent("UdCellsMethod", UdCellsMethod_);
         coeffs_.readIfPresent("UdCenterToggle", UdCenterToggle_);
+        coeffs_.readIfPresent("UdCorrection", UdCorrection_);
         coeffs_.readIfPresent("forceDistributionMethod", forceDistributionMethod_);
         coeffs_.readIfPresent("ADmodel", ADmodel_);
         coeffs_.readIfPresent("centerRatio", centerRatio_);

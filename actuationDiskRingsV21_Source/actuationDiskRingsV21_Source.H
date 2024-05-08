@@ -223,6 +223,8 @@ namespace Foam
             //   - 1 = use center of AD with centerRatio
             int UdCenterToggle_;
 
+            int UdCorrection_;
+
             int forceDistributionMethod_;
             
             // AD model
@@ -231,6 +233,7 @@ namespace Foam
             // - 2 : analytic 
             // - 3 : analytic non-uniform inflow 
             // - 4 : generalized analytic non-uniform inflow 
+            // - 5 : eliptic 
             int ADmodel_;
 
             // List of cell ID for each node
@@ -346,7 +349,7 @@ namespace Foam
                 const vectorField &U,
                 // vectorField &force) const;
                 vectorField &force,
-                scalar &UrefPrevious) const;
+                scalar &CtPrevious) const;
 
             //- Disallow default bitwise copy construct
             actuationDiskRingsV21_Source(const actuationDiskRingsV21_Source &);
@@ -502,6 +505,11 @@ namespace Foam
             scalar UdCenterToggle() const
             {
                 return UdCenterToggle_;
+            }
+
+            scalar UdCorrection() const
+            {
+                return UdCorrection_;
             }
 
             scalar forceDistributionMethod() const
