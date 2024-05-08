@@ -198,7 +198,6 @@ scalar Foam::fv::actuationDiskRingsV21_Source::addactuationDiskRings_AxialInerti
             cellsDisc.append(cells[c]);
         }
     }
-    // Pout <<"total cells in the procesor: "<<cellsDisc.size()<<endl;
 
     //------------------wight of the AD cells depending distance from plane and sphere-----
 
@@ -335,10 +334,6 @@ scalar Foam::fv::actuationDiskRingsV21_Source::addactuationDiskRings_AxialInerti
 
             vector Bi = getNodePosition(tita_n_Rad, rMed_r, yawRad, diskPoint_, ring, numberRings_);
 
-            // get velocity in node
-            // vector U_dPointCells = getNodeVelocity(nodeCellID_, total_nodes_counter, ring, numberRings_, U, gradU, nodesNumber_, gradInterpolation_, cellCentres, Bi);
-
-            // it is faster codewise to directly execute the code rather than call the function
             vector U_dPointCells = vector(1000, 1000, 1000);
             if (nodeCellID_[total_nodes_counter] != -1) // if the closer cell is in this procesor
             {
@@ -363,11 +358,15 @@ scalar Foam::fv::actuationDiskRingsV21_Source::addactuationDiskRings_AxialInerti
             reduce(U_dPointCells, minOp<vector>()); // take only normal values of U
             if (mag(U_dPointCells) > 1000) // We add a flag in case it does not find a cell near
             {
-                // U_dPointCells = vector(10, 0, 0);
-                Info << "OpenFOAM cell Not found" << endl;
-                // Info << "ring: " << ring << endl;
-                // Info << "node: " << total_nodes_counter << endl;
-                // Info << "radius: " << radius << endl;
+                Info << "mag(U_dPointCells) > 100 for node " << total_nodes_counter << endl;
+                if (nodeCellID_[total_nodes_counter] != -1) // if the closer cell is in this procesor
+                {
+                    vector dx = Bi - cellCentres[nodeCellID_[total_nodes_counter]];
+                    vector dU = dx & gradU[nodeCellID_[total_nodes_counter]];
+                    Pout << "U_dPointCells = " << U_dPointCells << endl;
+                    Pout << "dx = " << dx << endl;
+                    Pout << "dU = " << dU << endl;
+                }
             }
 
             U_dNodes.append(U_dPointCells);
@@ -640,7 +639,6 @@ scalar Foam::fv::actuationDiskRingsV21_Source::addactuationDiskRings_AxialInerti
 
         if (ADmodel_ == 2) {
             // q0 calculation considering uniform inflow
-            // factores a1 y a2 para calcular q0 del metodo analitico
             // Cp calculation
             scalar tita_r = 0;
             scalar tita_n_Rad = 0;
@@ -778,10 +776,12 @@ scalar Foam::fv::actuationDiskRingsV21_Source::addactuationDiskRings_AxialInerti
                     gNode = rootFactorFunction(rootFactor_, xNode, rootDistance_, phi);  
                     FNode = tipFactorFunction(tipFactor_, xNode, lambda_, phi);  
                     nodeArea = ringAreaList_[ring];
+
                     a1 += pow(UrefYaw, 2) * gNode * FNode * nodeArea;
                     if (xNode > 0) {
                         a2 += 0.5 * pow(UrefYaw, 2) * pow( gNode * FNode / xNode , 2) * nodeArea;
                     }
+
                     Cp_sum += UrefYaw * mag(U_dPointCells) * gNode * FNode * nodeArea;
                 }
             }
@@ -794,10 +794,8 @@ scalar Foam::fv::actuationDiskRingsV21_Source::addactuationDiskRings_AxialInerti
             q0 = ( - lambda_ * a1 + sqrt( pow(lambda_ * a1,2) + 4 * a2 * ( thrust / density ) ) )/(2 * a2);
 
             // Cp calculation
-            // float nominalPower = 0.5 * density * M_PI * pow(maxR_,2) * pow(UrefYaw,3);
             float nominalPower = 0.5 * density * diskArea_ * pow(UrefYaw,3);
             float realPower = omega * maxR_ * density * q0 * Cp_sum ;
-            // float realPower = omega * pow(maxR_,3) * density * q0 * Cp_sum ;
             Cp = realPower / nominalPower;
         }
         else if (ADmodel_ == 4) {
@@ -1181,7 +1179,7 @@ scalar Foam::fv::actuationDiskRingsV21_Source::addactuationDiskRings_AxialInerti
                     rtable,
                     U_dPointCells_ntr,
                     UdiList_);
-
+                
                 U_inf1 = ((mag(U_dPointCells_ntr) - UdiList_[pos1table2]) * ((UinfList_[pos1table2 + nR_]) - (UinfList_[pos1table2])) / (UdiList_[pos1table2 + nR_] - UdiList_[pos1table2])) + (UinfList_[pos1table2]);
                 fn1 = ((mag(U_dPointCells_ntr) - UdiList_[pos1table2]) * ((fnList_[pos1table2 + nR_]) - (fnList_[pos1table2])) / (UdiList_[pos1table2 + nR_] - UdiList_[pos1table2])) + (fnList_[pos1table2]);
                 ft1 = ((mag(U_dPointCells_ntr) - UdiList_[pos1table2]) * ((ftList_[pos1table2 + nR_]) - (ftList_[pos1table2])) / (UdiList_[pos1table2 + nR_] - UdiList_[pos1table2])) + (ftList_[pos1table2]);

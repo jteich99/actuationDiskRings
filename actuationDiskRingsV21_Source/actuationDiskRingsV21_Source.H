@@ -349,6 +349,7 @@ namespace Foam
                 const vectorField &U,
                 // vectorField &force) const;
                 vectorField &force,
+                // scalar &UrefPrevious) const;
                 scalar &CtPrevious) const;
 
             //- Disallow default bitwise copy construct

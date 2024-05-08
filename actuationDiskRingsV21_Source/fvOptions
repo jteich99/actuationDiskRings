@@ -1,7 +1,7 @@
 /*--------------------------------*- C++ -*----------------------------------*\
 | =========                 |                                                 |
 | \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           |
-|  \\    /   O peration     | Version:  2.3.1                                 |
+|  \\    /   O peration     | Version:  3.4.0                                 |
 |   \\  /    A nd           | Web:      www.OpenFOAM.org                      |
 |    \\/     M anipulation  |                                                 |
 \*---------------------------------------------------------------------------*/
@@ -19,83 +19,46 @@ FoamFile
 
 disk1
 {
-     //type            actuationDiskV7b_test_Source;
-    //type            actuationDiskV7b_Source;
-    //type            actuationDiskV7c_Source;
-    //type            actuationDiskV7d_Source;
-    //type            actuationDiskV7b_calib_Source;
-    //type            actuationDiskV10a_calib_Source;
-    //type            actuationDiskV10a_Source;
-    //type            actuationDiskV10b_calib_Source;
-    //type            actuationDiskV10b_Source;
-    //type            actuationDiskRings_calib_Source;
-    //type            actuationDiskRings_Source;
-    //type            actuationDiskRingsV1c_Source;
-    //type            actuationDiskRingsV10b_calib_Source;
-    //type            actuationDiskRingsV10b_Source;
-    //type            actuationDiskRingsV11_calib_Source;
-    type            actuationDiskRingsV11_Source;
-    //type            actuationLineRingsV1_calib_Source;
-    //type            actuationLineRingsV1_Source;
-    //type            actuationLineRingsV2_calib_Source;
-    //type            actuationLineRingsV2_Source;
-    //type            actuationDiskRingsV2_calib_Source;
-    //type            actuationDiskRingsV2_Source;
-    //type            actuationLineRingsV3_calib_Source;
-    active          on;            //on/off switch
-    //selectionMode   cellSet;       //cellSet // points //cellZone
-    //cellSet         actuationDisk1;//cellSet name when selectionMode = cellSet
+    type            actuationDiskRingsV21_Source;
+    // type            actuationDiskRingsV11_Source;
+    active          on;
 
-    
-    //actuationDiskV7b_test_SourceCoeffs
-    //actuationDiskV7b_SourceCoeffs
-    //actuationDiskV7c_SourceCoeffs
-    //actuationDiskV7d_SourceCoeffs
-    //actuationDiskV7b_calib_SourceCoeffs
-    //actuationDiskV10a_calib_SourceCoeffs
-    //actuationDiskV10a_SourceCoeffs
-    //actuationDiskV10b_calib_SourceCoeffs
-    //actuationDiskV10b_SourceCoeffs
-    //actuationDiskRings_calib_SourceCoeffs
-    //actuationDiskRings_SourceCoeffs
-    //actuationDiskRingsV1c_SourceCoeffs
-    //actuationDiskRingsV10b_calib_SourceCoeffs
-    //actuationDiskRingsV10b_SourceCoeffs   
-    //actuationDiskRingsV11_calib_SourceCoeffs
-    actuationDiskRingsV11_SourceCoeffs
-    //actuationLineRingsV1_calib_SourceCoeffs
-    //actuationLineRingsV1_SourceCoeffs
-    //actuationLineRingsV2_calib_SourceCoeffs
-    //actuationLineRingsV2_SourceCoeffs
-    //actuationDiskRingsV2_calib_SourceCoeffs
-    //actuationDiskRingsV2_SourceCoeffs
-    //actuationLineRingsV3_calib_SourceCoeffs
+    // actuationDiskRingsV11_SourceCoeffs
+    actuationDiskRingsV21_SourceCoeffs
     {
-        selectionMode   cellSet;       //cellSet // points //cellZone
-        cellSet         actuationDisk1;//cellSet name when selectionMode = cellSet
+        selectionMode   cellSet;        //cellSet // points //cellZone
         fieldNames  (U);
-        diskDir     (1 0 0);   // orientation of the disk
-        Ct          $Ct;       // Ct
-        Cp          $Cp;      // Cp
-        Uinf        $Uinf;     // Uinf
-        yaw         $yaw;     // yaw angle (positive is against clock wise) 
+
+        diskDir     (1 0 0);            // orientation of the disk
+        Cp          $Cp;                // Cp
+        Ct          $Ct;                // Ct
+        Uinf        $Uinf;              // Uinf
+        cellSize    $cellSize;          // fixed min cell size in disc, D=126
+        yaw         $yaw;               // yaw angle (positive is against clock wise)
+        omega       $omega;
         pitch       $pitch;
-        omega       $omega; 
-        cellSize    $cellSize;     // fixed min cell size in disc, D=126
-        diskArea    $Area;         // disk area
-	    diskPoint   ($diskPoint_x $diskPoint_y $diskPoint_z); // disk center point
-        //rootFactor  1;              //1-On, 0-Off
-        rootDistance    0.1;        //root as a fraction of Diameter [D]
-        //tipFactor   1;              //1-On, 0-Off
-        nodesCellsRatio    2;       //Ratio Total amount of nodes / CellsInAD.
-        rThicknessCellsizeRatio  0.5;//Ratio ring Thickness / cellSize
-        density     1.225;          //kg/m3. 1.225 means air   
-        gradInterpolation  1;       //1-On, 0-Off
-        
+        diskArea    $Area;              // disk area
+        diskPoint   ($diskPoint_x_1 $diskPoint_y_1 $diskPoint_z_1); //disk center point
+        rootFactor  1;                //1-On, 0-Off
+        tipFactor   1;                //1-On, 0-Off
+        nodesCellsRatio    2;           //Ratio Total amount of nodes / CellsInAD.
+        rThicknessCellsizeRatio  0.5;   //Ratio ring Thickness / cellSize
+        gradInterpolation  1;           //1-On, 0-Off
+
+        rootDistance    0.1;            //root as a fraction of Diameter [D]
+        lambda          7;
+
+        centerRatio     0.3;
+        UdCellsMethod   2;
+        UdCenterToggle  0;
+        UrefCalculationMethod  3;
+        forceDistributionMethod     1;
+        forceCalculationMethod     2;
+
+        density     1.225;              //kg/m3. 1.225 means air
+        cellSet         actuationDisk1;
         #include        "./system/listfvOptions_actuationDiskV11_Source.txt"
+        #include        "./system/.txt"
     }
 }
-
-
-
 // ************************************************************************* //

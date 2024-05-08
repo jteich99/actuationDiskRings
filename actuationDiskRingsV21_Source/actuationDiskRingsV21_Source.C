@@ -197,6 +197,7 @@ Foam::fv::actuationDiskRingsV21_Source::actuationDiskRingsV21_Source(
 
         Info << "Print Avg Table: " << endl;
         Info << UdAvg_table_ << endl;
+        Info << "" << endl;
     }
 
     coeffs_.lookup("fieldNames") >> fieldNames_;
@@ -266,10 +267,6 @@ Foam::fv::actuationDiskRingsV21_Source::actuationDiskRingsV21_Source(
         ringrMedList_.append(rMedI_);
         areaI_ = M_PI * (pow(rMedI_ + ringThickness_ / 2, 2) - pow(rMedI_ - ringThickness_ / 2, 2)) / round(nodesI_);
         ringAreaList_.append(areaI_);
-        // Info << "ring: " << ring << endl;
-        // Info << " - nodes: " << round(nodesI_) << endl;
-        // Info << " - tita: " << titaI_ << endl;
-        // Info << " - node area: " << areaI_ << endl;
         rMedI_ += ringThickness_;
     }
 
@@ -328,7 +325,6 @@ Foam::fv::actuationDiskRingsV21_Source::actuationDiskRingsV21_Source(
             {
                 dist = mag(rNodeList_[i] - rList_orig[posr]);
 
-                // if ((rNodeList_[i] - rList_orig[posr + 1]) >= 0)
                 if (
                     mag(rNodeList_[i] - rList_orig[posr + 1]) < dist and
                     ((rNodeList_[i] - rList_orig[posr + 1]) >= 0)
@@ -355,29 +351,15 @@ Foam::fv::actuationDiskRingsV21_Source::actuationDiskRingsV21_Source(
                     Uref2List_[i * (UinfOnlyList_.size() * rNodeList_.size()) + j * (rNodeList_.size()) + k] = UrefList_[i];
                     UinfList_[i * (UinfOnlyList_.size() * rNodeList_.size()) + j * (rNodeList_.size()) + k] = UinfOnlyList_[j];
                     rList_[i * (UinfOnlyList_.size() * rNodeList_.size()) + j * (rNodeList_.size()) + k] = rNodeList_[k];
+
                     UdiList_[i * (UinfOnlyList_.size() * rNodeList_.size()) + j * (rNodeList_.size()) + k] = UdiList_orig[i * (UinfOnlyList_.size() * nR_orig) + j * nR_orig + posrList_[k]] + (rNodeList_[k] - rList_orig[posrList_[k]]) * (UdiList_orig[i * (UinfOnlyList_.size() * nR_orig) + j * nR_orig + posrList_[k] + 1] - UdiList_orig[i * (UinfOnlyList_.size() * nR_orig) + j * nR_orig + posrList_[k]]) / (rList_orig[posrList_[k] + 1] - rList_orig[posrList_[k]]);
+
                     fnList_[i * (UinfOnlyList_.size() * rNodeList_.size()) + j * (rNodeList_.size()) + k] = fnList_orig[i * (UinfOnlyList_.size() * nR_orig) + j * nR_orig + posrList_[k]] + (rNodeList_[k] - rList_orig[posrList_[k]]) * (fnList_orig[i * (UinfOnlyList_.size() * nR_orig) + j * nR_orig + posrList_[k] + 1] - fnList_orig[i * (UinfOnlyList_.size() * nR_orig) + j * nR_orig + posrList_[k]]) / (rList_orig[posrList_[k] + 1] - rList_orig[posrList_[k]]);
+
                     ftList_[i * (UinfOnlyList_.size() * rNodeList_.size()) + j * (rNodeList_.size()) + k] = ftList_orig[i * (UinfOnlyList_.size() * nR_orig) + j * nR_orig + posrList_[k]] + (rNodeList_[k] - rList_orig[posrList_[k]]) * (ftList_orig[i * (UinfOnlyList_.size() * nR_orig) + j * nR_orig + posrList_[k] + 1] - ftList_orig[i * (UinfOnlyList_.size() * nR_orig) + j * nR_orig + posrList_[k]]) / (rList_orig[posrList_[k] + 1] - rList_orig[posrList_[k]]);
                 }
             }
         }
-
-        // we fill up the new table
-        // for (int i = 0; i < UrefList_.size(); i = i + 1)
-        // {
-        //     for (int j = 0; j < UinfOnlyList_.size(); j = j + 1)
-        //     {
-        //         int k = 0;
-        //         Uref2List_[i * (UinfOnlyList_.size() * rNodeList_.size()) + j * (rNodeList_.size()) + k] = UrefList_[i];
-        //         UinfList_[i * (UinfOnlyList_.size() * rNodeList_.size()) + j * (rNodeList_.size()) + k] = UinfOnlyList_[j];
-        //         rList_[i * (UinfOnlyList_.size() * rNodeList_.size()) + j * (rNodeList_.size()) + k] = rNodeList_[k];
-
-        //         UdiList_[i * (UinfOnlyList_.size() * rNodeList_.size()) + j * (rNodeList_.size()) + k] = UdiList_orig[i * (UinfOnlyList_.size() * nR_orig) + j * nR_orig + posrList_[k]] + (rNodeList_[k] - rList_orig[posrList_[k]]) * (UdiList_orig[i * (UinfOnlyList_.size() * nR_orig) + j * nR_orig + posrList_[k] + 1] - UdiList_orig[i * (UinfOnlyList_.size() * nR_orig) + j * nR_orig + posrList_[k]]) / (rList_orig[posrList_[k] + 1] - rList_orig[posrList_[k]]);
-
-        //         fnList_[i * (UinfOnlyList_.size() * rNodeList_.size()) + j * (rNodeList_.size()) + k] = fnList_[i * (UinfOnlyList_.size() * rNodeList_.size()) + j * (rNodeList_.size()) + k + rNodeList_.size() - 1] / ringNodesList_[ringNodesList_.size() - 1];
-        //         ftList_[i * (UinfOnlyList_.size() * rNodeList_.size()) + j * (rNodeList_.size()) + k] = 0;
-        //     }
-        // }
     }
 
     // add the center node
@@ -489,6 +471,7 @@ Foam::fv::actuationDiskRingsV21_Source::actuationDiskRingsV21_Source(
 
 // * * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * //
 
+// scalar UrefPrevious;
 scalar CtPrevious;
 // void Foam::fv::actuationDiskRingsV21_Source::addSup(
 void Foam::fv::actuationDiskRingsV21_Source::addSup(
@@ -515,8 +498,10 @@ void Foam::fv::actuationDiskRingsV21_Source::addSup(
     if (mesh().time().value() == 1)
     {
         // UrefPrevious = Uinf() * 1.1;
+        // UrefPrevious = Uinf();
         CtPrevious = Ct();
     }
+    // Info << "UrefPrevious = " << UrefPrevious << endl;
     Info << "CtPrevious = " << CtPrevious << endl;
     // scalar UrefPrevious = Uinf();
 
@@ -524,6 +509,7 @@ void Foam::fv::actuationDiskRingsV21_Source::addSup(
     {
         // addactuationDiskRings_AxialInertialResistance(
         // scalar Uref = addactuationDiskRings_AxialInertialResistance(
+        // UrefPrevious = addactuationDiskRings_AxialInertialResistance(
         CtPrevious = addactuationDiskRings_AxialInertialResistance(
             Usource,
             cells_,
@@ -532,6 +518,7 @@ void Foam::fv::actuationDiskRingsV21_Source::addSup(
             U,
             // force);
             force,
+            // UrefPrevious);
             CtPrevious);
         // UrefPrevious = Uref;
     }
@@ -568,8 +555,10 @@ void Foam::fv::actuationDiskRingsV21_Source::addSup(
     if (mesh().time().value() == 1)
     {
         // UrefPrevious = Uinf() * 1.1;
+        // UrefPrevious = Uinf();
         CtPrevious = Ct();
     }
+    // Info << "UrefPrevious = " << UrefPrevious << endl;
     Info << "CtPrevious = " << CtPrevious << endl;
     // scalar UrefPrevious = Uinf();
 
@@ -577,6 +566,7 @@ void Foam::fv::actuationDiskRingsV21_Source::addSup(
     {
         // addactuationDiskRings_AxialInertialResistance(
         // scalar Uref = addactuationDiskRings_AxialInertialResistance(
+        // UrefPrevious = addactuationDiskRings_AxialInertialResistance(
         CtPrevious = addactuationDiskRings_AxialInertialResistance(
             Usource,
             cells_,
@@ -585,6 +575,7 @@ void Foam::fv::actuationDiskRingsV21_Source::addSup(
             U,
             // force);
             force,
+            // UrefPrevious);
             CtPrevious);
         // UrefPrevious = Uref;
     }
