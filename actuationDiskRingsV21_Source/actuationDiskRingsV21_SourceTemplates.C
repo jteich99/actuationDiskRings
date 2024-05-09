@@ -771,8 +771,8 @@ scalar Foam::fv::actuationDiskRingsV21_Source::addactuationDiskRings_AxialInerti
                     );
 
                     total_nodes_counter += 1;
-                    
-                    xNode = rMed_r / maxR_;
+
+                    xNode = radius / maxR_;
                     gNode = rootFactorFunction(rootFactor_, xNode, rootDistance_, phi);  
                     FNode = tipFactorFunction(tipFactor_, xNode, lambda_, phi);  
                     nodeArea = ringAreaList_[ring];
@@ -844,7 +844,7 @@ scalar Foam::fv::actuationDiskRingsV21_Source::addactuationDiskRings_AxialInerti
 
                     total_nodes_counter += 1;
                     
-                    xNode = rMed_r / maxR_;
+                    xNode = radius / maxR_;
                     gNode = rootFactorFunction(rootFactor_, xNode, rootDistance_, phi);  
                     FNode = tipFactorFunction(tipFactor_, xNode, lambda_, phi);  
                     nodeArea = ringAreaList_[ring];
@@ -900,7 +900,7 @@ scalar Foam::fv::actuationDiskRingsV21_Source::addactuationDiskRings_AxialInerti
 
                     total_nodes_counter += 1;
                     
-                    xNode = rMed_r / maxR_;
+                    xNode = radius / maxR_;
                     gNode = rootFactorFunction(rootFactor_, xNode, rootDistance_, phi);  
                     FNode = tipFactorFunction(tipFactor_, xNode, lambda_, phi);  
                     nodeArea = ringAreaList_[ring];

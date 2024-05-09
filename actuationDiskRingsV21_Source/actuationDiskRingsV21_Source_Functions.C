@@ -132,20 +132,10 @@ float getNodePhiAngle(
     {
         if (omega > 0)
         {
-            phi = Foam::atan(U_n / (radius * omega - U_t));
-        }
-        if (U_t - radius * omega > 0)
-        {
-            if (U_n >= 0)
-            {
-                phi += M_PI;
-            } else if (U_n < 0)
-            {
-                phi -= M_PI;
-            }
+            phi = Foam::atan(U_n / (U_t - radius * omega));
         }
     }
-
+    
     return phi;
 }
 
@@ -225,7 +215,9 @@ float tipFactorFunction(
         scalar c2 = 27;
         scalar c3 = 0.1;
 
-        if (x > 0) {
+        if (phi == 0) {
+            F = 1; // f = 1/0 = infty, then exp(-infty)=0, then acos(0) = pi/2, then F=1
+        } else if (x > 0) {
             scalar g = std::exp(-c1 * (Nb * lambda - c2)) + c3;
             scalar f = (Nb / 2) * (1 - x) / (x * std::sin(phi));
             if (f > 0)
@@ -235,8 +227,6 @@ float tipFactorFunction(
                     F = (2 / (M_PI)) * std::acos(std::exp(-g * f));
                 }
             }
-        } else if (phi == 0) {
-            F = 1; // f = 1/0 = infty, then exp(-infty)=0, then acos(0) = pi/2, then F=1
         } else {
             F = 1;
         }
@@ -249,6 +239,10 @@ float tipFactorFunction(
         Info << "tipFactor type not valid" << endl;
     }
     
+    if ( F < 0 ) {
+        Info << "F dio menor a 0!!" << endl;
+        F = 0;
+    }
     return F;
 }
 
@@ -265,12 +259,24 @@ float rootFactorFunction(
     }
     else if (rootFactorType == 1){
         // root factor by Glauert
-        scalar f_tip = (Nb / 2) * (1 - x) / (x * std::sin(phi));
+        scalar f_tip;
+        if (
+            (phi == 0) || 
+            (x == 0)
+         ){
+            f_tip = 100; // high value, because if phi=0 f_tip-> infty
+        } else {
+            f_tip = (Nb / 2) * (1 - x) / (x * std::sin(phi));
+        }
+
         if (x <= rootDistance)
         {
             g = 0;
         }
-        // else if ((x > rootDistance) and (f_tip > 0) and (x < 0.5))
+        else if (phi == 0)
+        {
+            g = 1;
+        }
         else if ((f_tip > 0) and (x < 0.5))
         {
             scalar f = (Nb / 2) * (x - rootDistance) / (x * std::sin(phi));
@@ -293,7 +299,6 @@ float rootFactorFunction(
             g = 0;
         }
         else if (x < 0.5)
-        // if (x < 0.5)
         {
             g = 1 - std::exp( - a * pow((x/rootDistance), b) );
         }
