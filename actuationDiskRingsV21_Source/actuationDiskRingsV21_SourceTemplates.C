@@ -848,15 +848,14 @@ scalar Foam::fv::actuationDiskRingsV21_Source::addactuationDiskRings_AxialInerti
                     gNode = rootFactorFunction(rootFactor_, xNode, rootDistance_, phi);  
                     FNode = tipFactorFunction(tipFactor_, xNode, lambda_, phi);  
                     nodeArea = ringAreaList_[ring];
-                    UrefNode = 2 * mag(U_dPointCells) / (1 + sqrt(1 - Ct));
 
-                    a1 += nodeArea * pow(UrefNode,2) * gNode * FNode;
-                    a2 += nodeArea * pow(UrefNode,2) * gNode * FNode * pow(xNode,2);
+                    a1 += nodeArea * pow(UrefYaw,2) * gNode * FNode;
+                    a2 += nodeArea * pow(UrefYaw,2) * gNode * FNode * pow(xNode,2);
                     if (xNode > 0) {
-                        a3 += nodeArea * pow(UrefNode * gNode * FNode / xNode, 2);
+                        a3 += nodeArea * pow(UrefYaw * gNode * FNode / xNode, 2);
                     }
-                    a4 += nodeArea * pow(UrefNode * gNode * FNode, 2);
-                    a5 += nodeArea * pow(UrefNode * gNode * FNode * xNode, 2);
+                    a4 += nodeArea * pow(UrefYaw * gNode * FNode, 2);
+                    a5 += nodeArea * pow(UrefYaw * gNode * FNode * xNode, 2);
                 }
             }
 
@@ -904,10 +903,9 @@ scalar Foam::fv::actuationDiskRingsV21_Source::addactuationDiskRings_AxialInerti
                     gNode = rootFactorFunction(rootFactor_, xNode, rootDistance_, phi);  
                     FNode = tipFactorFunction(tipFactor_, xNode, lambda_, phi);  
                     nodeArea = ringAreaList_[ring];
-                    UrefNode = 2 * mag(U_dPointCells) / (1 + sqrt(1 - Ct));
 
                     if (xNode > 0) {
-                        Cp_sum += nodeArea * UrefNode * mag(U_dPointCells) * (q0 / xNode - S0 * xNode) * gNode * FNode;
+                        Cp_sum += nodeArea * UrefYaw * mag(U_dPointCells) * (q0 / xNode - S0 * xNode) * gNode * FNode;
                     }
                 }
             }
@@ -1249,8 +1247,8 @@ scalar Foam::fv::actuationDiskRingsV21_Source::addactuationDiskRings_AxialInerti
                     float g_point = rootFactorFunction(rootFactor_, x_point, rootDistance_, phi);  
                     float F_point = tipFactorFunction(tipFactor_, x_point, lambda_, phi);  
                     
-                    fn_point = density_ * pow(U_inf_point, 2) * (q0 / x_point - S0 * x_point) * g_point * F_point * (lambda_ * x_point + 0.5 * (q0 / x_point - S0 * x_point) * g_point * F_point );
-                    ft_point = density_ * U_inf_point * mag(U_dPointCells) * (q0 / x_point - S0 * x_point) * g_point * F_point;
+                    fn_point = density_ * pow(UrefYaw, 2) * (q0 / x_point - S0 * x_point) * g_point * F_point * (lambda_ * x_point + 0.5 * (q0 / x_point - S0 * x_point) * g_point * F_point );
+                    ft_point = density_ * UrefYaw * mag(U_dPointCells) * (q0 / x_point - S0 * x_point) * g_point * F_point;
 
                     nodeArea = ringAreaList_[ring];
 
