@@ -122,19 +122,39 @@ float getNodePhiAngle(
     vector U_dPointCells,
     float radius,
     float omega
+    // float omega,
+    // float lambda,
+    // float Uref
 ){
     vector U_dPointCells_ntr = inv(transform) & U_dPointCells; 
-    float U_n = -1 * U_dPointCells_ntr[0];
-    float U_t = -1 * U_dPointCells_ntr[1];
+    float U_n = -1 * U_dPointCells_ntr[0]; // original
+    float U_t = -1 * U_dPointCells_ntr[1]; // original
+    // float U_n = U_dPointCells_ntr[0];
+    // float U_t = U_dPointCells_ntr[1];
 
     float phi = M_PI; // so that center node has sen(phi)=1
     if (radius != 0)
     {
         if (omega > 0)
         {
-            phi = Foam::atan(U_n / (U_t - radius * omega));
+            // phi = Foam::atan(U_n / (U_t - radius * omega));
+            phi = Foam::atan(U_n / (radius * omega - U_t)); // original
+        }
+
+        if (
+            (U_t - radius * omega > 0) and
+            (U_n >= 0)
+        ) {
+            phi += M_PI;
+        } else if (
+            (U_t - radius * omega > 0) and
+            (U_n < 0)
+        ) {
+            phi -= M_PI;
         }
     }
+
+    // phi = Foam::asin( 1/(sqrt( 1 + (pow(lambda * x,2))/(mag(U_dPointCells)/Uref))) );
     
     return phi;
 }
@@ -201,7 +221,10 @@ float tipFactorFunction(
     int tipFactorType,
     float x,
     float lambda,
-    float phi
+    // float phi
+    float phi,
+    vector UdPoint,
+    float Uref
 ){
     float Nb = 3;
     float F;
@@ -212,23 +235,29 @@ float tipFactorFunction(
     else if (tipFactorType == 1){
         // tip factor by Shen 2005
         scalar c1 = 0.125;
-        scalar c2 = 27;
+        // scalar c2 = 27;
+        scalar c2 = 21;
         scalar c3 = 0.1;
 
         if (phi == 0) {
             F = 1; // f = 1/0 = infty, then exp(-infty)=0, then acos(0) = pi/2, then F=1
         } else if (x > 0) {
             scalar g = std::exp(-c1 * (Nb * lambda - c2)) + c3;
-            scalar f = (Nb / 2) * (1 - x) / (x * std::sin(phi));
-            if (f > 0)
+            float sinPhi = 1 / std::sqrt( 1 + pow(lambda * x, 2)/(mag(UdPoint)/Uref));
+            scalar f = (Nb / 2) * (1 - x) / (x * sinPhi);
+            // scalar f = (Nb / 2) * (1 - x) / (x * std::sin(phi));
+            if (g * f > 0)
             {
-                if (((std::exp(-g * f)) > -1) and ((std::exp(-g * f)) < 1))
-                {
-                    F = (2 / (M_PI)) * std::acos(std::exp(-g * f));
-                }
+                F = (2 / (M_PI)) * std::acos(std::exp(-g * f));
+                // if (((std::exp(-g * f)) > -1) and ((std::exp(-g * f)) < 1))
+                // {
+                //     F = (2 / (M_PI)) * std::acos(std::exp(-g * f));
+                // } else {
+                //     F = 1;
+                // }
+            } else {
+                F = 0;
             }
-        } else {
-            F = 1;
         }
     }
     else if (tipFactorType == 2){
@@ -239,10 +268,6 @@ float tipFactorFunction(
         Info << "tipFactor type not valid" << endl;
     }
     
-    if ( F < 0 ) {
-        Info << "F dio menor a 0!!" << endl;
-        F = 0;
-    }
     return F;
 }
 
@@ -250,7 +275,11 @@ float rootFactorFunction(
     int rootFactorType,
     float x,
     float rootDistance,
-    float phi
+    // float phi
+    float phi,
+    float lambda,
+    vector UdPoint,
+    float Uref
 ){
     float g;
     float Nb = 3;
@@ -275,14 +304,20 @@ float rootFactorFunction(
         }
         else if (phi == 0)
         {
-            g = 1;
+           g = 1;
         }
-        else if ((f_tip > 0) and (x < 0.5))
+        // else if ((f_tip > 0) and (x < 0.5))
+        else if (x < 0.5)
         {
-            scalar f = (Nb / 2) * (x - rootDistance) / (x * std::sin(phi));
-            if ((std::exp(-f) > -1) and (std::exp(-f) < 1))
+            float sinPhi = 1 / std::sqrt( 1 + pow(lambda * x, 2)/(mag(UdPoint)/Uref));
+            scalar f = (Nb / 2) * (x - rootDistance) / (x * sinPhi);
+            // scalar f = (Nb / 2) * (x - rootDistance) / (x * std::sin(phi));
+            if (f > 0) 
+            // if ((std::exp(-f) > -1) and (std::exp(-f) < 1))
             {
                 g = (2 / (M_PI)) * std::acos(std::exp(-f));
+            } else {
+                g = 0;
             }
         }
         else
