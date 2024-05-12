@@ -621,14 +621,21 @@ float tipFactorFunction(
     int tipFactorType,
     float x,
     float lambda,
-    float phi
+    // float phi
+    float phi,
+    Foam::vector UdPoint,
+    float Uref
 );
 
 float rootFactorFunction(
     int rootFactorType,
     float x,
     float rootDistance,
-    float phi
+    // float phi
+    float phi,
+    float lambda,
+    Foam::vector UdPoint,
+    float Uref
 );
 
 float gFunction(
