@@ -140,6 +140,8 @@ Foam::fv::actuationDiskRingsV21_Source::actuationDiskRingsV21_Source(
       powerCurve_table_(coeffs_.lookup("powerCurve_table")), 
       UdAvg_table_(coeffs_.lookup("UdAvg_table")), // for adaptation
       Udi_table_(coeffs_.lookup("Udi_table")),     // for adaptation
+      Uinf_vanDerLaan_table_(coeffs_.lookup("Uinf_vanDerLaan_table")), // for adaptation
+      forces_vanDerLaan_table_(coeffs_.lookup("forces_vanDerLaan_table")),     // for adaptation
       gradInterpolation_(readScalar(coeffs_.lookup("gradInterpolation"))),
       diskCellId_(-1)
 {
@@ -176,7 +178,6 @@ Foam::fv::actuationDiskRingsV21_Source::actuationDiskRingsV21_Source(
         }
 
         //---define list using the table Udi_table
-
         //- Original List
         Uref2List_orig.setSize(Udi_table_.size());
         UinfList_orig.setSize(Udi_table_.size());
@@ -198,6 +199,37 @@ Foam::fv::actuationDiskRingsV21_Source::actuationDiskRingsV21_Source(
         Info << "Print Avg Table: " << endl;
         Info << UdAvg_table_ << endl;
         Info << "" << endl;
+    } else if (ADmodel_ == 6) {
+        //---define list using the table Uinf_vanDerLaan_table_
+        UrefList_.setSize(Uinf_vanDerLaan_table_.size());
+        UdAvgList_.setSize(Uinf_vanDerLaan_table_.size());
+        CtList_.setSize(Uinf_vanDerLaan_table_.size());
+        CpList_.setSize(Uinf_vanDerLaan_table_.size());
+        omegaList_.setSize(Uinf_vanDerLaan_table_.size());
+
+        forAll(Uinf_vanDerLaan_table_, i)
+        {
+            UrefList_[i] = Uinf_vanDerLaan_table_[i].first()[0];
+            UdAvgList_[i] = Uinf_vanDerLaan_table_[i].first()[1];
+            CtList_[i] = Uinf_vanDerLaan_table_[i].second()[0];
+            CpList_[i] = Uinf_vanDerLaan_table_[i].second()[1];
+            omegaList_[i] = Uinf_vanDerLaan_table_[i].second()[2];
+        }
+
+        //---define list using the table forces_vanDerLaan_table_
+        //- Original List
+        Uref2List_orig.setSize(forces_vanDerLaan_table_.size());
+        rList_orig.setSize(forces_vanDerLaan_table_.size());
+        fnList_orig.setSize(forces_vanDerLaan_table_.size());
+        ftList_orig.setSize(forces_vanDerLaan_table_.size());
+
+        forAll(forces_vanDerLaan_table_, i)
+        {
+            Uref2List_orig[i] = forces_vanDerLaan_table_[i].first()[0];
+            rList_orig[i] = forces_vanDerLaan_table_[i].second()[0];
+            fnList_orig[i] = forces_vanDerLaan_table_[i].second()[1];
+            ftList_orig[i] = forces_vanDerLaan_table_[i].second()[2];
+        }
     }
 
     coeffs_.lookup("fieldNames") >> fieldNames_;
@@ -271,8 +303,10 @@ Foam::fv::actuationDiskRingsV21_Source::actuationDiskRingsV21_Source(
     }
 
     int nR_orig = 1;
-    if (ADmodel_ == 1)
-    {
+    if (
+        (ADmodel_ == 1) or
+        (ADmodel_ == 6)
+    ) {
         // count how many radius sections are in the original table
         while (rList_orig[nR_orig] - rList_orig[nR_orig - 1] > 0)
         {
@@ -358,6 +392,60 @@ Foam::fv::actuationDiskRingsV21_Source::actuationDiskRingsV21_Source(
 
                     ftList_[i * (UinfOnlyList_.size() * rNodeList_.size()) + j * (rNodeList_.size()) + k] = ftList_orig[i * (UinfOnlyList_.size() * nR_orig) + j * nR_orig + posrList_[k]] + (rNodeList_[k] - rList_orig[posrList_[k]]) * (ftList_orig[i * (UinfOnlyList_.size() * nR_orig) + j * nR_orig + posrList_[k] + 1] - ftList_orig[i * (UinfOnlyList_.size() * nR_orig) + j * nR_orig + posrList_[k]]) / (rList_orig[posrList_[k] + 1] - rList_orig[posrList_[k]]);
                 }
+            }
+        }
+    } else if (ADmodel_ == 6) {
+        // Set up a list with Uinf from original table
+        // for (int i = 0; i < (UinfList_orig.size() / UrefList_.size()); i = i + nR_orig)
+        // {
+        //     UinfOnlyList_.append(UinfList_orig[i]);
+        // }
+
+        // Info << "Original UinfOnlyList_: " << UinfOnlyList_ << endl;
+
+        // Set up new table lists with the corresponding size
+        Uref2List_.setSize(rNodeList_.size() * UrefList_.size());
+        rList_.setSize(rNodeList_.size() * UrefList_.size());
+        fnList_.setSize(rNodeList_.size() * UrefList_.size());
+        ftList_.setSize(rNodeList_.size() * UrefList_.size());
+
+        // Set up new list with closer radial nodes from the old table.
+        posrList_.setSize(rNodeList_.size());
+
+        for (int i = 0; i < rNodeList_.size(); i = i + 1)
+        {
+            scalar dist = VGREAT;
+            scalar posr = 0;
+            while ((mag(rNodeList_[i] - rList_orig[posr]) < dist) && (posr < nR_orig - 1))
+            {
+                dist = mag(rNodeList_[i] - rList_orig[posr]);
+
+                if (
+                    mag(rNodeList_[i] - rList_orig[posr + 1]) < dist and
+                    ((rNodeList_[i] - rList_orig[posr + 1]) >= 0)
+                )
+                {
+                    posr += 1;
+                }
+            }
+
+            posrList_[i] = posr;
+        }
+
+        Info << "posrList_ " << posrList_ << endl;
+
+        // we fill up the new table
+        for (int i = 0; i < UrefList_.size(); i = i + 1)
+        {
+            for (int k = 0; k < rNodeList_.size(); k = k + 1) 
+            {
+                Uref2List_[i * rNodeList_.size() + k] = UrefList_[i];
+
+                rList_[i * rNodeList_.size() + k] = rNodeList_[k];
+
+                fnList_[i * rNodeList_.size() + k] = fnList_orig[i * nR_orig + posrList_[k]] + (rNodeList_[k] - rList_orig[posrList_[k]]) * (fnList_orig[i * nR_orig + posrList_[k] + 1] - fnList_orig[i * nR_orig + posrList_[k]]) / (rList_orig[posrList_[k] + 1] - rList_orig[posrList_[k]]);
+
+                ftList_[i * rNodeList_.size() + k] = ftList_orig[i * nR_orig + posrList_[k]] + (rNodeList_[k] - rList_orig[posrList_[k]]) * (ftList_orig[i * nR_orig + posrList_[k] + 1] - ftList_orig[i * nR_orig + posrList_[k]]) / (rList_orig[posrList_[k] + 1] - rList_orig[posrList_[k]]);
             }
         }
     }
@@ -615,6 +703,8 @@ bool Foam::fv::actuationDiskRingsV21_Source::read(const dictionary &dict)
         coeffs_.readIfPresent("forceDistributionMethod", forceDistributionMethod_);
         coeffs_.readIfPresent("ADmodel", ADmodel_);
         coeffs_.readIfPresent("centerRatio", centerRatio_);
+        coeffs_.readIfPresent("Uinf_vanDerLaan_table", Uinf_vanDerLaan_table_);
+        coeffs_.readIfPresent("forces_vanDerLaan_table", forces_vanDerLaan_table_);
 
         checkData();
 

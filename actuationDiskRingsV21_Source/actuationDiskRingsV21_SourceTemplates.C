@@ -517,11 +517,19 @@ scalar Foam::fv::actuationDiskRingsV21_Source::addactuationDiskRings_AxialInerti
             scale_factor_n = thrust / sumF_n_Bixfactor;
         }
 
-    } else if (ADmodel_ == 1) {
+    } else if (
+        (ADmodel_ == 1) or  // Numeric AD Navarro Diaz
+        (ADmodel_ == 6)     // Numeric AD van der Laan
+    ){
         //----- Numeric AD - Navarro Diaz 2019 -------------------------------------------------------------------
         //----- Find positions in table 1 (UdAvgList) for interpolation using UdCells ----------------------------
         Info << "" << endl;
-        Info << "Numeric AD model starting..." << endl;
+        if (ADmodel_ == 1) {
+            Info << "Numeric AD (Navarro Diaz) model starting..." << endl;
+        } else if (ADmodel_ == 6) {
+            Info << "Numeric AD (van der Laan) model starting..." << endl;
+        }
+
         float difference = GREAT;
         if (mag(U_dCells) < UdAvgList_[0]) // if the U_d in the disc is out the table
         {
@@ -551,9 +559,12 @@ scalar Foam::fv::actuationDiskRingsV21_Source::addactuationDiskRings_AxialInerti
         omega = ((mag(U_dCells) - UdAvgList_[pos]) * (omegaList_[pos + 1] - omegaList_[pos]) / (UdAvgList_[pos + 1] - UdAvgList_[pos])) + omegaList_[pos];
         Info << "omega(rad/s) interpolated: " << omega << endl;
 
-        pitch = ((UrefYaw - UrefList_[pos]) * ((pitchList_[pos + 1]) - (pitchList_[pos])) / (UrefList_[pos + 1] - UrefList_[pos])) + (pitchList_[pos]);
-        Info << "pitch(deg) interpolated " << pitch << endl;
-        pitch = pitch * 2 * M_PI / 360;
+        if (ADmodel_ == 1) {
+            // pitch calibration only in Navarro Diaz AD
+            pitch = ((UrefYaw - UrefList_[pos]) * ((pitchList_[pos + 1]) - (pitchList_[pos])) / (UrefList_[pos + 1] - UrefList_[pos])) + (pitchList_[pos]);
+            Info << "pitch(deg) interpolated " << pitch << endl;
+            pitch = pitch * 2 * M_PI / 360;
+        }
 
         Ct = ((mag(U_dCells) - UdAvgList_[pos]) * (CtList_[pos + 1] - CtList_[pos]) / (UdAvgList_[pos + 1] - UdAvgList_[pos])) + CtList_[pos];
         Info << "Ct interpolated " << Ct << endl;
@@ -990,7 +1001,10 @@ scalar Foam::fv::actuationDiskRingsV21_Source::addactuationDiskRings_AxialInerti
 
     // count how many radius sections are
     int nR_ = 1;
-    if (ADmodel_ == 1){
+    if (
+        (ADmodel_ == 1) or
+        (ADmodel_ == 6)
+    ){
         while (rList_[nR_] - rList_[nR_ - 1] > 0)
         {
             nR_ = nR_ + 1;
@@ -1157,7 +1171,10 @@ scalar Foam::fv::actuationDiskRingsV21_Source::addactuationDiskRings_AxialInerti
                 F_n_Bi = gNode * FNode * scale_factor_n * fn * nodeArea;
                 F_tita_Bi = gNode * FNode * scale_factor_t * ft * nodeArea;
 
-            } else if (ADmodel_ == 1) {
+            } else if (
+                (ADmodel_ == 1) or
+                (ADmodel_ == 6)
+            ) {
                 //---- Calculate Uinf, fn and ft for each position of table 2 for interpolation ------------------------------ 
                 posr = posrList_[ring + 1];
                 rtable = rNodeList_[ring + 1];
@@ -1168,46 +1185,76 @@ scalar Foam::fv::actuationDiskRingsV21_Source::addactuationDiskRings_AxialInerti
                     rtable = 0;
                 }
 
-                //---- Calculate Uinf, fn and ft for position 1 ---------------------------------- 
-                scalar pos1table2 = posInTableUref2(
-                    pos1,
-                    Uref2List_,
-                    UrefList_,
-                    rList_,
-                    rtable,
-                    U_dPointCells_ntr,
-                    UdiList_);
-                
-                U_inf1 = ((mag(U_dPointCells_ntr) - UdiList_[pos1table2]) * ((UinfList_[pos1table2 + nR_]) - (UinfList_[pos1table2])) / (UdiList_[pos1table2 + nR_] - UdiList_[pos1table2])) + (UinfList_[pos1table2]);
-                fn1 = ((mag(U_dPointCells_ntr) - UdiList_[pos1table2]) * ((fnList_[pos1table2 + nR_]) - (fnList_[pos1table2])) / (UdiList_[pos1table2 + nR_] - UdiList_[pos1table2])) + (fnList_[pos1table2]);
-                ft1 = ((mag(U_dPointCells_ntr) - UdiList_[pos1table2]) * ((ftList_[pos1table2 + nR_]) - (ftList_[pos1table2])) / (UdiList_[pos1table2 + nR_] - UdiList_[pos1table2])) + (ftList_[pos1table2]);
-                //---- End of calculate Uinf, fn and ft for position 1 ---------------------------------- 
+                if (ADmodel_ == 1) {
+                    //---- Calculate Uinf, fn and ft for position 1 ---------------------------------- 
+                    scalar pos1table2 = posInTableUref2(
+                        pos1,
+                        Uref2List_,
+                        UrefList_,
+                        rList_,
+                        rtable,
+                        U_dPointCells_ntr,
+                        UdiList_);
+                    
+                    U_inf1 = ((mag(U_dPointCells_ntr) - UdiList_[pos1table2]) * ((UinfList_[pos1table2 + nR_]) - (UinfList_[pos1table2])) / (UdiList_[pos1table2 + nR_] - UdiList_[pos1table2])) + (UinfList_[pos1table2]);
+                    fn1 = ((mag(U_dPointCells_ntr) - UdiList_[pos1table2]) * ((fnList_[pos1table2 + nR_]) - (fnList_[pos1table2])) / (UdiList_[pos1table2 + nR_] - UdiList_[pos1table2])) + (fnList_[pos1table2]);
+                    ft1 = ((mag(U_dPointCells_ntr) - UdiList_[pos1table2]) * ((ftList_[pos1table2 + nR_]) - (ftList_[pos1table2])) / (UdiList_[pos1table2 + nR_] - UdiList_[pos1table2])) + (ftList_[pos1table2]);
+                    //---- End of calculate Uinf, fn and ft for position 1 ---------------------------------- 
 
-                //---- Calculate Uinf, fn and ft for position 2 ---------------------------------- 
-                scalar pos2table2 = posInTableUref2(
-                    pos2,
-                    Uref2List_,
-                    UrefList_,
-                    rList_,
-                    rtable,
-                    U_dPointCells_ntr,
-                    UdiList_);
+                    //---- Calculate Uinf, fn and ft for position 2 ---------------------------------- 
+                    scalar pos2table2 = posInTableUref2(
+                        pos2,
+                        Uref2List_,
+                        UrefList_,
+                        rList_,
+                        rtable,
+                        U_dPointCells_ntr,
+                        UdiList_);
 
-                U_inf2 = ((mag(U_dPointCells_ntr) - UdiList_[pos2table2]) * ((UinfList_[pos2table2 + nR_]) - (UinfList_[pos2table2])) / (UdiList_[pos2table2 + nR_] - UdiList_[pos2table2])) + (UinfList_[pos2table2]);
-                fn2 = ((mag(U_dPointCells_ntr) - UdiList_[pos2table2]) * ((fnList_[pos2table2 + nR_]) - (fnList_[pos2table2])) / (UdiList_[pos2table2 + nR_] - UdiList_[pos2table2])) + (fnList_[pos2table2]);
-                ft2 = ((mag(U_dPointCells_ntr) - UdiList_[pos2table2]) * ((ftList_[pos2table2 + nR_]) - (ftList_[pos2table2])) / (UdiList_[pos2table2 + nR_] - UdiList_[pos2table2])) + (ftList_[pos2table2]);
-                //---- End of calculate Uinf, fn and ft for position 2 ---------------------------------- 
+                    U_inf2 = ((mag(U_dPointCells_ntr) - UdiList_[pos2table2]) * ((UinfList_[pos2table2 + nR_]) - (UinfList_[pos2table2])) / (UdiList_[pos2table2 + nR_] - UdiList_[pos2table2])) + (UinfList_[pos2table2]);
+                    fn2 = ((mag(U_dPointCells_ntr) - UdiList_[pos2table2]) * ((fnList_[pos2table2 + nR_]) - (fnList_[pos2table2])) / (UdiList_[pos2table2 + nR_] - UdiList_[pos2table2])) + (fnList_[pos2table2]);
+                    ft2 = ((mag(U_dPointCells_ntr) - UdiList_[pos2table2]) * ((ftList_[pos2table2 + nR_]) - (ftList_[pos2table2])) / (UdiList_[pos2table2 + nR_] - UdiList_[pos2table2])) + (ftList_[pos2table2]);
+                    //---- End of calculate Uinf, fn and ft for position 2 ---------------------------------- 
 
-                //---- Interpolate Uinf, fn and ft from values of position 1 and 2 ---------------------------------- 
-                U_inf_point = ((UrefYaw - UrefList_[pos1]) * ((U_inf2) - (U_inf1)) / (UrefList_[pos2] - UrefList_[pos1])) + (U_inf1);
-                fn_point = ((UrefYaw - UrefList_[pos1]) * ((fn2) - (fn1)) / (UrefList_[pos2] - UrefList_[pos1])) + (fn1);
-                ft_point = ((UrefYaw - UrefList_[pos1]) * ((ft2) - (ft1)) / (UrefList_[pos2] - UrefList_[pos1])) + (ft1);
-                //---- End of interpolate Uinf, fn and ft from values of position 1 and 2 ---------------------------------- 
-                //---- End of calculate Uinf, fn and ft for each position of table 2 for interpolation ---------------------------------- 
-                F_n_Bi = (fn_point * ringThickness_ * 3) / ringNodesList_[ring];
-                F_n_Bi /= density_;
-                F_tita_Bi = (ft_point * ringThickness_ * 3) / ringNodesList_[ring];
-                F_tita_Bi /= density_;
+                    //---- Interpolate Uinf, fn and ft from values of position 1 and 2 ---------------------------------- 
+                    U_inf_point = ((UrefYaw - UrefList_[pos1]) * ((U_inf2) - (U_inf1)) / (UrefList_[pos2] - UrefList_[pos1])) + (U_inf1);
+                    fn_point = ((UrefYaw - UrefList_[pos1]) * ((fn2) - (fn1)) / (UrefList_[pos2] - UrefList_[pos1])) + (fn1);
+                    ft_point = ((UrefYaw - UrefList_[pos1]) * ((ft2) - (ft1)) / (UrefList_[pos2] - UrefList_[pos1])) + (ft1);
+                    //---- End of interpolate Uinf, fn and ft from values of position 1 and 2 ---------------------------------- 
+                    F_n_Bi = (fn_point * ringThickness_ * 3) / ringNodesList_[ring];
+                    F_tita_Bi = (ft_point * ringThickness_ * 3) / ringNodesList_[ring];
+                    F_n_Bi /= density_;
+                    F_tita_Bi /= density_;
+                } else if (ADmodel_ == 6) {
+                    scalar pos1table2 = posInTableForcesVanDerLaan(
+                        pos1,
+                        UrefList_,
+                        Uref2List_,
+                        rList_,
+                        rtable);
+                    fn1 = fnList_[pos1table2];
+                    ft1 = ftList_[pos1table2];
+                    
+                    scalar pos2table2 = posInTableForcesVanDerLaan(
+                        pos2,
+                        UrefList_,
+                        Uref2List_,
+                        rList_,
+                        rtable);
+                    fn2 = fnList_[pos2table2];
+                    ft2 = ftList_[pos2table2];
+
+                    fn_point = ((UrefYaw - UrefList_[pos1]) * ((fn2) - (fn1)) / (UrefList_[pos2] - UrefList_[pos1])) + (fn1);
+                    ft_point = ((UrefYaw - UrefList_[pos1]) * ((ft2) - (ft1)) / (UrefList_[pos2] - UrefList_[pos1])) + (ft1);
+
+                    float nodeArea = ringAreaList_[ring];
+                    F_n_Bi = (fn_point / (T / 3)) * (1/6) * density_ * pow(mag(U_dCells),2) * Ct * pow(UrefYaw/mag(U_dCells),2) * nodeArea;
+                    Info << "F_n_Bi = " << F_n_Bi << endl;
+                    F_tita_Bi = (ft_point / (P / (3 * omega))) * (1/6) * density_ * pow(mag(U_dCells),3) * (Cp * pow(UrefYaw/mag(U_dCells),3) / omega) * nodeArea;
+                    Info << "F_tita_Bi = " << F_tita_Bi << endl;
+                    F_n_Bi /= density_;
+                    F_tita_Bi /= density_;
+                }
             }
             else if (
                 (ADmodel_ == 2) or

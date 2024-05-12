@@ -253,8 +253,10 @@ namespace Foam
             List<scalar> CpPowerCurveList_;
 
             //- UdAvg_table
-            // List<Tuple2<vector, vector>> UdAvg_table_;
-            List<Tuple2<vector, vector>> UdAvg_table_; //--- new line
+            List<Tuple2<vector, vector>> UdAvg_table_;
+
+            //- Uinf_vanDerLaan_table
+            List<Tuple2<vector, vector>> Uinf_vanDerLaan_table_;
 
             //- UrefList
             List<scalar> UrefList_;
@@ -275,8 +277,10 @@ namespace Foam
             List<scalar> CpList_;
 
             //- Udi_table
-            // List<Tuple2<vector, vector>> Udi_table_;
-            List<Tuple2<vector, vector>> Udi_table_; //--- new line
+            List<Tuple2<vector, vector>> Udi_table_; 
+
+            //- forces_vanDerLaan_table
+            List<Tuple2<vector, vector>> forces_vanDerLaan_table_; 
 
             //- Original lists
             //- Uref2List original
@@ -603,6 +607,14 @@ float posInTableUref2(
     Foam::scalar rtable,
     Foam::vector U_dPointCells_ntr,
     Foam::List<Foam::scalar> UdiList_
+);
+
+float posInTableForcesVanDerLaan(
+    int posUref,
+    Foam::List<Foam::scalar> UrefList_,
+    Foam::List<Foam::scalar> Uref2List_,
+    Foam::List<Foam::scalar> rList_,
+    Foam::scalar rtable
 );
 
 float tipFactorFunction(

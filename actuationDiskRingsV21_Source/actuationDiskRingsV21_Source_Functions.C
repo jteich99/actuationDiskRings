@@ -197,6 +197,40 @@ float posInTableUref2(
     return pos;
 }
 
+float posInTableForcesVanDerLaan(
+    int posUref,
+    List<scalar> UrefList_,
+    List<scalar> Uref2List_,
+    List<scalar> rList_,
+    scalar rtable
+) {
+    int pos = 0;
+    int lastPos = 0;
+
+    for (int i = 0; i < (Uref2List_.size() - 1); i = i + 1)
+    {
+        if (
+            (Uref2List_[i] == UrefList_[posUref]) and
+            (rList_[i] == rtable)
+        ) { // look into calibration table 2 for the Uref value and r value
+            pos = i; // the position of the lower value
+        }
+
+        if (
+            (Uref2List_[i] == UrefList_[posUref]) and 
+            (rList_[i] == rtable) 
+        ) {
+            lastPos = i;
+        }
+    }
+
+    if (pos == 0) { // just in case the value is outside the table
+        pos = lastPos;
+    }
+
+    return pos;
+}
+
 float tipFactorFunction(
     int tipFactorType,
     float x,
