@@ -1253,9 +1253,9 @@ scalar Foam::fv::actuationDiskRingsV21_Source::addactuationDiskRings_AxialInerti
                     ft_point = ((UrefYaw - UrefList_[pos1]) * ((ft2) - (ft1)) / (UrefList_[pos2] - UrefList_[pos1])) + (ft1);
 
                     float nodeArea = ringAreaList_[ring];
-                    F_n_Bi = (fn_point / (T / 3)) * (1/6) * density_ * pow(mag(U_dCells),2) * Ct * pow(UrefYaw/mag(U_dCells),2) * nodeArea;
+                    F_n_Bi = 3 * fn_point * density_ * pow(mag(U_dCells),2) * Ct * pow(UrefYaw/mag(U_dCells),2) * nodeArea / (6 * T);
                     Info << "F_n_Bi = " << F_n_Bi << endl;
-                    F_tita_Bi = (ft_point / (P / (3 * omega))) * (1/6) * density_ * pow(mag(U_dCells),3) * (Cp * pow(UrefYaw/mag(U_dCells),3) / omega) * nodeArea;
+                    F_tita_Bi = (ft_point * 3 * omega)  * density_ * pow(mag(U_dCells),3) * (Cp * pow(UrefYaw/mag(U_dCells),3) / omega) * nodeArea / (6 * P);
                     Info << "F_tita_Bi = " << F_tita_Bi << endl;
                     F_n_Bi /= density_;
                     F_tita_Bi /= density_;
