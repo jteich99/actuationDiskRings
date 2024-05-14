@@ -1060,6 +1060,46 @@ scalar Foam::fv::actuationDiskRingsV21_Source::addactuationDiskRings_AxialInerti
             radius = mag(diskPoint_ - Bi);
 
             vector U_dPointCells = U_dNodes[total_nodes_counter];
+
+            // test to confirm that UdPoint from list is the same as UdPoint directly calculated
+            Info << "velocity from list = " << U_dPointCells << endl;
+            vector U_dPointCells = vector(1000, 1000, 1000);
+            if (nodeCellID_[total_nodes_counter] != -1) // if the closer cell is in this procesor
+            {
+                // medir la velocidad en el nodo
+                if (ring == numberRings_)
+                {
+                    U_dPointCells =  U[nodeCellID_[nodesNumber_-1]];
+                }
+                else
+                {
+                    U_dPointCells = U[nodeCellID_[total_nodes_counter]];
+                }
+                if ( 
+                    (gradInterpolation_ == 1) and
+                    (ring != numberRings_)
+                ){
+                    vector dx = Bi - cellCentres[nodeCellID_[total_nodes_counter]];
+                    vector dU = dx & gradU[nodeCellID_[total_nodes_counter]];
+                    U_dPointCells += dU;
+                }
+            }
+            reduce(U_dPointCells, minOp<vector>()); // take only normal values of U
+            if (mag(U_dPointCells) > 1000) // We add a flag in case it does not find a cell near
+            {
+                Info << "mag(U_dPointCells) > 100 for node " << total_nodes_counter << endl;
+                if (nodeCellID_[total_nodes_counter] != -1) // if the closer cell is in this procesor
+                {
+                    vector dx = Bi - cellCentres[nodeCellID_[total_nodes_counter]];
+                    vector dU = dx & gradU[nodeCellID_[total_nodes_counter]];
+                    Pout << "U_dPointCells = " << U_dPointCells << endl;
+                    Pout << "dx = " << dx << endl;
+                    Pout << "dU = " << dU << endl;
+                }
+            }
+            Info << "velocity measured = " << U_dPointCells << endl;
+            Info << "" << endl;
+
             float phi = getNodePhiAngle(
                 transform,
                 U_dPointCells,
