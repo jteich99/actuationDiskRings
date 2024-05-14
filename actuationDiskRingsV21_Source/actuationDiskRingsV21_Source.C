@@ -499,9 +499,9 @@ Foam::fv::actuationDiskRingsV21_Source::actuationDiskRingsV21_Source(
 
             // fin the closest cell in all the domain
             diskCellId_ = mesh.findCell(Bi_);
-            reduce(diskCellId_, maxOp<label>());
 
             nodeCellID_[total_nodes_counter_] = diskCellId_;
+            reduce(diskCellId_, maxOp<label>());
 
             total_nodes_counter_ += 1;
 
