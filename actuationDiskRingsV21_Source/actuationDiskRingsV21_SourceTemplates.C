@@ -861,26 +861,39 @@ scalar Foam::fv::actuationDiskRingsV21_Source::addactuationDiskRings_AxialInerti
                     FNode = tipFactorFunction(tipFactor_, xNode, lambda_, phi, U_dPointCells, UrefYaw);  
                     nodeArea = ringAreaList_[ring];
 
-                    a1 += nodeArea * pow(UrefYaw,2) * gNode * FNode;
-                    a2 += nodeArea * pow(UrefYaw,2) * gNode * FNode * pow(xNode,2);
-                    if (xNode > 0) {
-                        a3 += nodeArea * pow(UrefYaw * gNode * FNode / xNode, 2);
+                    if ( UrefYaw > U_rated_) {
+                        a1 += nodeArea * pow(UrefYaw,2) * gNode * FNode;
+                        a2 += nodeArea * pow(UrefYaw,2) * gNode * FNode * pow(xNode,2);
+                        if (xNode > 0) {
+                            a3 += nodeArea * pow(UrefYaw * gNode * FNode / xNode, 2);
+                        }
+                        a4 += nodeArea * pow(UrefYaw * gNode * FNode, 2);
+                        a5 += nodeArea * pow(UrefYaw * gNode * FNode * xNode, 2);
+                    } else { 
+                        a1 += pow(U_rated_, 2) * gNode * FNode * nodeArea;
+                        if (xNode > 0) {
+                            a2 += 0.5 * pow(U_rated_, 2) * pow( gNode * FNode / xNode , 2) * nodeArea;
+                        }
                     }
-                    a4 += nodeArea * pow(UrefYaw * gNode * FNode, 2);
-                    a5 += nodeArea * pow(UrefYaw * gNode * FNode * xNode, 2);
                 }
             }
 
             S0 = S0Function(Ct, Ct_rated_);
 
-            float nominalThrust = 0.5 * density * diskArea_ * pow(UrefYaw,2);
-            float thrust = Ct * nominalThrust;
+            if ( UrefYaw > U_rated_) {
+                float nominalThrust = 0.5 * density * diskArea_ * pow(UrefYaw,2);
+                float thrust = Ct * nominalThrust;
 
-            b0 = - S0 * lambda_ * a2 + 0.5 * pow(S0,2) * a5 - thrust / density;
-            b1 = lambda_ * a1 - S0 * a4;
-            b2 = 0.5 * a3;
+                b0 = - S0 * lambda_ * a2 + 0.5 * pow(S0,2) * a5 - thrust / density;
+                b1 = lambda_ * a1 - S0 * a4;
+                b2 = 0.5 * a3;
 
-            q0 = (-b1 + sqrt(pow(b1,2) - 4 * b0 * b2)) / (2 * b2);
+                q0 = (-b1 + sqrt(pow(b1,2) - 4 * b0 * b2)) / (2 * b2);
+            } else {
+                float nominalThrust = 0.5 * density * diskArea_ * pow(U_rated_,2);
+                float thrust = Ct_rated_ * nominalThrust;
+                q0 = ( - lambda_ * a1 + sqrt( pow(lambda_ * a1,2) + 4 * a2 * ( thrust / density ) ) )/(2 * a2);
+            }
             // ---
 
             // Cp calculation
@@ -916,12 +929,22 @@ scalar Foam::fv::actuationDiskRingsV21_Source::addactuationDiskRings_AxialInerti
                     FNode = tipFactorFunction(tipFactor_, xNode, lambda_, phi, U_dPointCells, UrefYaw);  
                     nodeArea = ringAreaList_[ring];
 
-                    if (xNode > 0) {
-                        Cp_sum += nodeArea * UrefYaw * mag(U_dPointCells) * (q0 / xNode - S0 * xNode) * gNode * FNode;
+                    if ( UrefYaw > U_rated_ ) {
+                        if (xNode > 0) {
+                            Cp_sum += nodeArea * UrefYaw * mag(U_dPointCells) * (q0 / xNode - S0 * xNode) * gNode * FNode;
+                        }
+                    } else {
+                        if (xNode > 0) {
+                            Cp_sum += U_rated_ * mag(U_dPointCells) * gNode * FNode * nodeArea * q0 / xNode;
+                        }
                     }
                 }
             }
-            float nominalPower = 0.5 * density * diskArea_ * pow(UrefYaw,3);
+            if ( UrefYaw > U_rated_ ) {
+                float nominalPower = 0.5 * density * diskArea_ * pow(UrefYaw,3);
+            } else {
+                float nominalPower = 0.5 * density * diskArea_ * pow(U_rated_,3);
+            }
             float realPower = omega * maxR_ * density * Cp_sum;
             Cp = realPower / nominalPower;
 
