@@ -1276,8 +1276,10 @@ scalar Foam::fv::actuationDiskRingsV21_Source::addactuationDiskRings_AxialInerti
                     float g_point = rootFactorFunction(rootFactor_, x_point, rootDistance_, phi, lambda_, U_dPointCells, UrefYaw);  
                     float F_point = tipFactorFunction(tipFactor_, x_point, lambda_, phi, U_dPointCells, UrefYaw);  
                     
-                    fn_point = density_ * pow(UrefYaw, 2) * q0 * (g_point * F_point / x_point) * (lambda_ * x_point + q0 * (g_point * F_point / ( 2 * x_point)));
-                    ft_point = density_ * pow(UrefYaw, 2) * q0 * (g_point * F_point / x_point) * (mag(U_dPointCells) / UrefYaw);
+                    // fn_point = density_ * pow(UrefYaw, 2) * q0 * (g_point * F_point / x_point) * (lambda_ * x_point + q0 * (g_point * F_point / ( 2 * x_point)));
+                    // ft_point = density_ * pow(UrefYaw, 2) * q0 * (g_point * F_point / x_point) * (mag(U_dPointCells) / UrefYaw);
+                    fn_point = density_ * pow(U_inf_point, 2) * q0 * (g_point * F_point / x_point) * (lambda_ * x_point + q0 * (g_point * F_point / ( 2 * x_point)));
+                    ft_point = density_ * pow(U_inf_point, 2) * q0 * (g_point * F_point / x_point) * (mag(U_dPointCells) / U_inf_point);
 
                     nodeArea = ringAreaList_[ring];
 
@@ -1300,8 +1302,10 @@ scalar Foam::fv::actuationDiskRingsV21_Source::addactuationDiskRings_AxialInerti
                     float g_point = rootFactorFunction(rootFactor_, x_point, rootDistance_, phi, lambda_, U_dPointCells, UrefYaw);  
                     float F_point = tipFactorFunction(tipFactor_, x_point, lambda_, phi, U_dPointCells, UrefYaw);  
                     
-                    fn_point = density_ * pow(UrefYaw, 2) * (q0 / x_point - S0 * x_point) * g_point * F_point * (lambda_ * x_point + 0.5 * (q0 / x_point - S0 * x_point) * g_point * F_point );
-                    ft_point = density_ * UrefYaw * mag(U_dPointCells) * (q0 / x_point - S0 * x_point) * g_point * F_point;
+                    // fn_point = density_ * pow(UrefYaw, 2) * (q0 / x_point - S0 * x_point) * g_point * F_point * (lambda_ * x_point + 0.5 * (q0 / x_point - S0 * x_point) * g_point * F_point );
+                    // ft_point = density_ * UrefYaw * mag(U_dPointCells) * (q0 / x_point - S0 * x_point) * g_point * F_point;
+                    fn_point = density_ * pow(U_inf_point, 2) * (q0 / x_point - S0 * x_point) * g_point * F_point * (lambda_ * x_point + 0.5 * (q0 / x_point - S0 * x_point) * g_point * F_point );
+                    ft_point = density_ * U_inf_point * mag(U_dPointCells) * (q0 / x_point - S0 * x_point) * g_point * F_point;
 
                     nodeArea = ringAreaList_[ring];
 
