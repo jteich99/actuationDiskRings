@@ -83,7 +83,7 @@ vector getNodeVelocity(
     return U_dPointCells;
 }
 
-tensor getNodeTransformTensor(
+vector getNodeFtitaDir(
     vector Bi,
     vector diskPoint,
     vector uniDiskDir
@@ -104,6 +104,24 @@ tensor getNodeTransformTensor(
         uniDiskDir[0] * bladeUniDir[1] - uniDiskDir[1] * bladeUniDir[0]
     ); 
     F_tita_dir = F_tita_dir / mag(F_tita_dir);
+
+    return F_tita_dir;
+}
+
+tensor getNodeTransformTensor(
+    vector Bi,
+    vector diskPoint,
+    vector uniDiskDir
+){
+    vector bladeDir = Bi - diskPoint;
+    vector bladeUniDir;
+    if (mag(bladeDir) == 0){
+        bladeUniDir = vector(0,0,1);
+    } else {
+        bladeUniDir = bladeDir / mag(bladeDir);
+    }
+
+    vector F_tita_dir = getNodeFtitaDir(Bi, diskPoint, uniDiskDir);
     
     // calculate the tensor transformation of coordinates
     vector vector_n = -1 * uniDiskDir;

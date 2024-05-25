@@ -784,7 +784,7 @@ scalar Foam::fv::actuationDiskRingsV21_Source::addactuationDiskRings_AxialInerti
 
                     total_nodes_counter += 1;
 
-                    U_inf_point = 2 * mag(U_dPointCells) / (1 + sqrt(1 - Ct));
+                    float U_inf_point = 2 * mag(U_dPointCells) / (1 + sqrt(1 - Ct));
                     xNode = radius / maxR_;
                     gNode = rootFactorFunction(rootFactor_, xNode, rootDistance_, phi, lambda_, U_dPointCells, UrefYaw);  
                     FNode = tipFactorFunction(tipFactor_, xNode, lambda_, phi, U_dPointCells, UrefYaw);  
@@ -860,7 +860,7 @@ scalar Foam::fv::actuationDiskRingsV21_Source::addactuationDiskRings_AxialInerti
 
                     total_nodes_counter += 1;
                    
-                    U_inf_point = 2 * mag(U_dPointCells) / (1 + sqrt(1 - Ct));
+                    float U_inf_point = 2 * mag(U_dPointCells) / (1 + sqrt(1 - Ct));
                     xNode = radius / maxR_;
                     gNode = rootFactorFunction(rootFactor_, xNode, rootDistance_, phi, lambda_, U_dPointCells, UrefYaw);  
                     FNode = tipFactorFunction(tipFactor_, xNode, lambda_, phi, U_dPointCells, UrefYaw);  
@@ -932,7 +932,7 @@ scalar Foam::fv::actuationDiskRingsV21_Source::addactuationDiskRings_AxialInerti
 
                     total_nodes_counter += 1;
                     
-                    U_inf_point = 2 * mag(U_dPointCells) / (1 + sqrt(1 - Ct));
+                    float U_inf_point = 2 * mag(U_dPointCells) / (1 + sqrt(1 - Ct));
                     xNode = radius / maxR_;
                     gNode = rootFactorFunction(rootFactor_, xNode, rootDistance_, phi, lambda_, U_dPointCells, UrefYaw);  
                     FNode = tipFactorFunction(tipFactor_, xNode, lambda_, phi, U_dPointCells, UrefYaw);  
@@ -1082,6 +1082,8 @@ scalar Foam::fv::actuationDiskRingsV21_Source::addactuationDiskRings_AxialInerti
             scalar x_node = Bi[0];
             scalar y_node = Bi[1];
             scalar z_node = Bi[2];
+            
+            F_tita_dir = getNodeFtitaDir(Bi, diskPoint_, uniDiskDir_);
             //----- End of calculate node position ------------------------------------------
 
             tensor transform = getNodeTransformTensor(
