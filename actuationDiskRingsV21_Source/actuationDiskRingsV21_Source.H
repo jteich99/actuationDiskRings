@@ -590,6 +590,12 @@ Foam::vector getNodeVelocity(
     Foam::vector Bi
 );
 
+Foam::vector getNodeFtitaDir(
+    Foam::vector Bi,
+    Foam::vector diskPoint,
+    Foam::vector uniDiskDir
+);
+
 Foam::tensor getNodeTransformTensor(
     Foam::vector Bi,
     Foam::vector diskPoint,
