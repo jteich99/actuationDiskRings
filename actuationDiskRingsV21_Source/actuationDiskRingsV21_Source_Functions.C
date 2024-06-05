@@ -381,11 +381,12 @@ float rootFactorFunction(
         // root factor by Sorensen 2020
         float a = 2.335;
         int b = 4;
-        if (x <= rootDistance)
-        {
-            g = 0;
-        }
-        else if (x < 0.5)
+        // if (x <= rootDistance)
+        // {
+        //     g = 0;
+        // }
+        // else if (x < 0.5)
+        if (x < 0.5)
         {
             g = 1 - std::exp( - a * pow((x/rootDistance), b) );
         }
