@@ -316,6 +316,18 @@ float tipFactorFunction(
         // tip factor by Prandtl
         F = (2/M_PI) * std::acos( std::exp( - (Nb/2) * std::sqrt(1 + pow(lambda,2)) * (1 - x) ) );
     }
+    else if (tipFactorType == 3){
+        // tip factor by Glauert 
+
+        if (phi == 0) {
+            F = 1; // f = 1/0 = infty, then exp(-infty)=0, then acos(0) = pi/2, then F=1
+        } else if (x > 0) {
+            // float sinPhi = 1 / std::sqrt( 1 + pow(lambda * x, 2)/(mag(UdPoint)/Uref));
+            // scalar f = (Nb / 2) * (1 - x) / (x * sinPhi);
+            scalar f = (Nb / 2) * (1 - x) / (x * std::sin(phi));
+            F = (2 / (M_PI)) * std::acos(std::exp(-f));
+        }
+    }
     else {
         Info << "tipFactor type not valid" << endl;
     }
