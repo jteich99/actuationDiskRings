@@ -236,6 +236,13 @@ scalar Foam::fv::actuationDiskRingsV21_Source::addactuationDiskRings_AxialInerti
         }
         else if (UdCellsMethod_ == 2)
         {
+            // weight with Gaussian in distance to center of AD
+            weightADplane = 1;
+            weightSphereCenter = (1 / ((centerRatio * maxR) * sqrt(M_PI))) * exp(-1 * pow((dSphere / (centerRatio * maxR)), 2));
+            weightSphereAD = (1 / (maxR * sqrt(M_PI))) * exp(-1 * pow((dSphere / maxR), 2));
+        }
+        else if (UdCellsMethod_ == 3)
+        {
             // weight with Gaussian in distance to AD plane + distance to center of AD
             weightADplane = (1 / (E * sqrt(M_PI))) * exp(-1 * pow((d / E), 2));
             weightSphereCenter = (1 / ((centerRatio * maxR) * sqrt(M_PI))) * exp(-1 * pow((dSphere / (centerRatio * maxR)), 2));
