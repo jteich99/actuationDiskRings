@@ -128,6 +128,7 @@ DynamicList<scalar> posList; //position
 DynamicList<scalar> chordList; //chord
 DynamicList<scalar> betaList; //beta angle (pitch + twist)
 DynamicList<scalar> attackList; //angle of attack velocity
+DynamicList<scalar> phiList; // phi angle
 DynamicList<scalar> UnList; //local normal velocity
 DynamicList<scalar> UtList; //local tangential velocity
 DynamicList<scalar> UrList; //local radial velocity
@@ -705,6 +706,7 @@ for (int ring =0; ring<=(numberRings_-1); ring=ring+1)
 	    chordList.append(chord);
 	    betaList.append(beta*360/(2*M_PI));
 	    attackList.append(alpha*360/(2*M_PI));
+	    phiList.append(phi*360/(2*M_PI));
 	    UrelList.append(mag(Urel));
 	    UnList.append(U_n);
 	    UtList.append(U_t);
@@ -824,7 +826,7 @@ reduce(U_infCells, sumOp<vector>());
 if (Pstream::myProcNo() == 0) //if Im in the master proccesor
 {
 	//"Turbine, time [s], Uinf(fixed) [m/s], Cp(fixed), Ct(fixed), Power(Uinf,Cp) [W], Thrust(Uinf,Ct) [N] , Center Ud [m/s], Average Ud [m/s], Uinf(disc cells) [m/s], Power(disc cells) [W], Thrust(disc cells) [N], Torque(disc cells) [Nm]"
-	(*outTurbines) << this->name()<< "," << t << "," << Uref_ << "," << Cp_ << "," << Ct_ << "," << P*density_ << "," << T*density_ << "," << mag(U_dCenterCells) << "," << mag(U_dCells) << "," << mag(U_infCells) << "," << Pcells << "," << Tcells << "," << TorqueSects <<  "," << pitch_ << std::endl;
+	(*outTurbines) << this->name()<< "," << t << "," << UrefYaw << "," << Cp << "," << Ct << "," << P*density_ << "," << T*density_ << "," << mag(U_dCenterCells) << "," << mag(U_dCells) << "," << mag(U_infCells) << "," << Pcells << "," << Tcells << "," << TorqueSects <<  "," << pitch << std::endl;
 }
 
 //---nodes outputs
@@ -864,7 +866,7 @@ if (Pstream::myProcNo() == 0 and t > 0) //if Im in the master proccesor and from
 	(*outRings) << "Rings"<< std::endl;
 
     //header
-    (*outRings) << "node, ring, radius [m], node area [m2], normal velocity [m/s], tangential velocity [m/s], normal force [N], tangential force [N] " <<std::endl;
+    (*outRings) << "node, ring, radius [m], node area [m2], normal velocity [m/s], tangential velocity [m/s], normal force [N], tangential force [N], alpha [deg], beta [deg], phi [deg], pitch [rad] " <<std::endl;
 
     int i = 0;
 	//nodes
@@ -881,7 +883,7 @@ if (Pstream::myProcNo() == 0 and t > 0) //if Im in the master proccesor and from
 
             // (*outRings) << i + 1<< ", "<< ring<< ", " << posList[i] << ", "<< ringAreaList_[ring] << ", "
             (*outRings) << i + 1<< ", "<< ring<< ", " << ringrMedList_[ring] << ", "<< ringAreaList_[ring] << ", "
-            << UnList[i] << ", "<< UtList[i] << ", " << FnList[i]<< ", "<< FtList[i]<< std::endl ;
+            << UnList[i] << ", "<< UtList[i] << ", " << FnList[i]<< ", "<< FtList[i] << ", " << attackList[i] << ", " << betaList[i] << ", " << phiList[i] << ", " << pitch << std::endl ;
 		
         i += 1;
 		}
