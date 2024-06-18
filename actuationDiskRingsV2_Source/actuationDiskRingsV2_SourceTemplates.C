@@ -127,14 +127,19 @@ const Field<vector> zoneCellCentres(mesh().cellCentres(), cells);	//line cell ce
 DynamicList<scalar> posList; //position
 DynamicList<scalar> chordList; //chord
 DynamicList<scalar> betaList; //beta angle (pitch + twist)
+DynamicList<scalar> twistList; //twist angle
 DynamicList<scalar> attackList; //angle of attack velocity
 DynamicList<scalar> phiList; // phi angle
+DynamicList<scalar> CdList; // drag coefficient 
+DynamicList<scalar> ClList; // lift coefficient 
 DynamicList<scalar> UnList; //local normal velocity
 DynamicList<scalar> UtList; //local tangential velocity
 DynamicList<scalar> UrList; //local radial velocity
 DynamicList<scalar> UrelList; //local relative velocity
 DynamicList<scalar> FnList; //normal force
 DynamicList<scalar> FtList; //tangential force
+DynamicList<scalar> FlList; //lift force
+DynamicList<scalar> FdList; //drag force
 
 //calculate the radius
 scalar maxR = sqrt(diskArea_ / M_PI);
@@ -482,6 +487,8 @@ scalar dr =0.0;
 scalar F_Bi=0;
 scalar F_n_Bi=0;
 scalar F_tita_Bi=0;
+scalar F_l_Bi=0;
+scalar F_d_Bi=0;
 vector F_tita_dir=vector(0,0,0);
 scalar V_point_F = 0.0;
 
@@ -687,6 +694,12 @@ for (int ring =0; ring<=(numberRings_-1); ring=ring+1)
         scalar invDr = 0.0;
         blade_.interpolate(radius, twist, chord, i1, i2, invDr);        
 
+        Info << "Uref = " << UrefYaw << endl;
+        Info << "radius = " << radius << endl;
+        Info << "twist [deg] = " << twist * 180 / M_PI << endl;
+        Info << "pitch [deg] = " << pitch * 180 / M_PI << endl;
+        Info << "Uref = " << UrefYaw << endl;
+        Info << "phi [deg] = " << phi * 180 / M_PI << endl;
         beta = pitch + twist;
 	
      //    Info << "twist (deg) " <<  twist*360/(2*M_PI) << endl;	
@@ -695,16 +708,18 @@ for (int ring =0; ring<=(numberRings_-1); ring=ring+1)
 
         if (omega < 0)
         {
-            // Info << "omega is negative "  << endl;
+            Info << "omega is negative "  << endl;
             beta = M_PI - beta;
             // Info << "beta = M_PI - beta = " <<  beta << endl;
         }
+        Info << "beta [deg] = " << beta * 180 / M_PI << endl;
 
         alpha = phi - beta;
         // Info << "alpha (local attack angle) (deg) " <<  alpha*360/(2*M_PI) << endl;
 
 	    chordList.append(chord);
 	    betaList.append(beta*360/(2*M_PI));
+	    twistList.append(twist*360/(2*M_PI));
 	    attackList.append(alpha*360/(2*M_PI));
 	    phiList.append(phi*360/(2*M_PI));
 	    UrelList.append(mag(Urel));
@@ -717,18 +732,32 @@ for (int ring =0; ring<=(numberRings_-1); ring=ring+1)
         const label profile1 = blade_.profileID()[i1];
         const label profile2 = blade_.profileID()[i2];
 
+        // alpha *= (180 / M_PI);
+        Info << "alpha [deg]: " << alpha * 180 / M_PI << endl;
         scalar Cd1 = 0.0;
         scalar Cl1 = 0.0;
         profiles_[profile1].Cdl(alpha, Cd1, Cl1);
+        Info << "profile 1: " << profiles_[profile1].name() << endl;
+        Info << "Cd1: " << Cd1 << endl;
+        Info << "Cl1: " << Cl1 << endl;
 
         scalar Cd2 = 0.0;
         scalar Cl2 = 0.0;
         profiles_[profile2].Cdl(alpha, Cd2, Cl2);
+        Info << "profile 2: " << profiles_[profile2].name() << endl;
+        Info << "Cd2: " << Cd2 << endl;
+        Info << "Cl2: " << Cl2 << endl;
+        Info << "invDr: " << invDr << endl;
 
         scalar Cd = invDr*(Cd2 - Cd1) + Cd1;
         scalar Cl = invDr*(Cl2 - Cl1) + Cl1;
-        // Info << "Cd:" <<  Cd<< endl;
-        // Info << "Cl:" <<  Cl << endl;
+        Info << "Cd: " << Cd << endl;
+        Info << "Cl: " << Cl << endl;
+
+        CdList.append(Cd);
+        ClList.append(Cl);
+
+        Info << "" << endl;
 
         //total force [N]
         F_Bi = ringThickness_*0.5*pow(mag(Urel),2)*chord*3/ringNodesList_[ring];
@@ -755,6 +784,12 @@ for (int ring =0; ring<=(numberRings_-1); ring=ring+1)
                 }
 
         // Info << "tipfactor: "<<tipfactor<<endl;
+            //
+
+        F_l_Bi = tipfactor * (F_Bi * Cl);
+        FlList.append(F_l_Bi);
+        F_d_Bi = tipfactor * (F_Bi * Cd);
+        FdList.append(F_d_Bi);
 
 	F_n_Bi = tipfactor*(F_Bi*Cl*cos(phi) + F_Bi*Cd*sin(phi));
         // Info<< "BEM normal force [N] in the point section " << F_n_Bi << endl;
@@ -866,7 +901,7 @@ if (Pstream::myProcNo() == 0 and t > 0) //if Im in the master proccesor and from
 	(*outRings) << "Rings"<< std::endl;
 
     //header
-    (*outRings) << "node, ring, radius [m], node area [m2], normal velocity [m/s], tangential velocity [m/s], normal force [N], tangential force [N], alpha [deg], beta [deg], phi [deg], pitch [rad] " <<std::endl;
+    (*outRings) << "node, ring, radius [m], node area [m2], normal velocity [m/s], tangential velocity [m/s], normal force [N], tangential force [N], drag force [N], lift force [N], alpha [deg], beta [deg], phi [deg], pitch [deg], twist [deg] " <<std::endl;
 
     int i = 0;
 	//nodes
@@ -883,7 +918,10 @@ if (Pstream::myProcNo() == 0 and t > 0) //if Im in the master proccesor and from
 
             // (*outRings) << i + 1<< ", "<< ring<< ", " << posList[i] << ", "<< ringAreaList_[ring] << ", "
             (*outRings) << i + 1<< ", "<< ring<< ", " << ringrMedList_[ring] << ", "<< ringAreaList_[ring] << ", "
-            << UnList[i] << ", "<< UtList[i] << ", " << FnList[i]<< ", "<< FtList[i] << ", " << attackList[i] << ", " << betaList[i] << ", " << phiList[i] << ", " << pitch << std::endl ;
+            << UnList[i] << ", "<< UtList[i] << ", " 
+            << FnList[i]<< ", "<< FtList[i] << ", " << FdList[i]<< ", "<< FlList[i] << ", " 
+            << attackList[i] << ", " << betaList[i] << ", " << phiList[i] << ", " << (pitch * 180 / M_PI) << ", " << twistList[i] << ", " 
+            << CdList[i] << ", " << ClList[i] << std::endl ;
 		
         i += 1;
 		}
