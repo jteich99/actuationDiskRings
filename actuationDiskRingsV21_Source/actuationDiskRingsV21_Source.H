@@ -632,6 +632,17 @@ float posInTableForcesVanDerLaan(
     Foam::scalar rtable
 );
 
+float sumForcesVanDerLaan(
+    int force, // if 1 then sum fn, if 2 then sum ft
+    int posUref,
+    Foam::List<Foam::scalar> UrefList_,
+    Foam::List<Foam::scalar> Uref2List_,
+    Foam::List<Foam::scalar> rList_,
+    Foam::List<Foam::scalar> fnList_,
+    Foam::List<Foam::scalar> ftList_,
+    float maxR
+);
+
 float tipFactorFunction(
     int tipFactorType,
     float x,

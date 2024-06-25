@@ -1034,10 +1034,12 @@ scalar Foam::fv::actuationDiskRingsV21_Source::addactuationDiskRings_AxialInerti
     float fn1 = GREAT;
     float fn2 = GREAT;
     float fn_point = GREAT;
+    float fn_scale;
     float ft1 = GREAT;
     float ft2 = GREAT;
     scalar rtable = 0;
     float ft_point = GREAT;
+    float ft_scale;
     scalar posr = 0;
     scalar lastPos = 0;
     float x_point; // x_point = radius_point / maxR
@@ -1071,6 +1073,20 @@ scalar Foam::fv::actuationDiskRingsV21_Source::addactuationDiskRings_AxialInerti
     //----- End of initialization of parameters of loops of force calculation ------------------------------------------
 
     //--- LOOP OVER RINGS FOR FORCE CALCULATION AND DISTTIBUTION -----------------------------------------------------------------
+    scalar sumFn1;
+    scalar sumFt1;
+    scalar sumFn2;
+    scalar sumFt2;
+    scalar sumFn;
+    scalar sumFt;
+    if (ADmodel_ == 6) {
+        sumFn1 = sumForcesVanDerLaan(1, pos1, UrefList_, Uref2List_, rList_, fnList_, ftList_, maxR_);
+        sumFt1 = sumForcesVanDerLaan(2, pos1, UrefList_, Uref2List_, rList_, fnList_, ftList_, maxR_);
+        sumFn2 = sumForcesVanDerLaan(1, pos2, UrefList_, Uref2List_, rList_, fnList_, ftList_, maxR_);
+        sumFt2 = sumForcesVanDerLaan(2, pos2, UrefList_, Uref2List_, rList_, fnList_, ftList_, maxR_);
+        sumFn = ((UrefYaw - UrefList_[pos1]) * ((sumFn2) - (sumFn1)) / (UrefList_[pos2] - UrefList_[pos1])) + (sumFn1);
+        sumFt = ((UrefYaw - UrefList_[pos1]) * ((sumFt2) - (sumFt1)) / (UrefList_[pos2] - UrefList_[pos1])) + (sumFt1);
+    }
     // loop through rings and nodes for calculating forces and distributing them
     total_nodes_counter = 0;
     for (int ring = 0; ring <= (numberRings_); ring = ring + 1)
@@ -1297,10 +1313,13 @@ scalar Foam::fv::actuationDiskRingsV21_Source::addactuationDiskRings_AxialInerti
                     fn_point = ((UrefYaw - UrefList_[pos1]) * ((fn2) - (fn1)) / (UrefList_[pos2] - UrefList_[pos1])) + (fn1);
                     ft_point = ((UrefYaw - UrefList_[pos1]) * ((ft2) - (ft1)) / (UrefList_[pos2] - UrefList_[pos1])) + (ft1);
 
+                    fn_scale = fn_point / sumFn;
+                    ft_scale = ft_point / sumFt;
+
                     float nodeArea = ringAreaList_[ring];
-                    F_n_Bi = 3 * fn_point * density_ * pow(mag(U_dCells),2) * Ct * pow(UrefYaw/mag(U_dCells),2) * nodeArea / (6 * T);
+                    F_n_Bi = fn_scale * 0.5 * density_ * pow(UrefYaw,2) * Ct * diskArea_ * ringThickness_ / (ringNodesList_[ring]);
                     Info << "F_n_Bi = " << F_n_Bi << endl;
-                    F_tita_Bi = (ft_point * 3 * omega)  * density_ * pow(mag(U_dCells),3) * (Cp * pow(UrefYaw/mag(U_dCells),3) / omega) * nodeArea / (6 * P);
+                    F_tita_Bi = ft_scale * (0.5 * density_ * pow(UrefYaw,3) * Cp  * diskArea_/ omega) * ringThickness_/ (ringNodesList_[ring]);
                     Info << "F_tita_Bi = " << F_tita_Bi << endl;
                     F_n_Bi /= density_;
                     F_tita_Bi /= density_;
