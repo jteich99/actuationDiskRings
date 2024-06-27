@@ -1317,10 +1317,15 @@ scalar Foam::fv::actuationDiskRingsV21_Source::addactuationDiskRings_AxialInerti
                     ft_scale = ft_point / sumFt;
 
                     float nodeArea = ringAreaList_[ring];
-                    F_n_Bi = fn_scale * 0.5 * density_ * pow(UrefYaw,2) * Ct * diskArea_ * ringThickness_ / (ringNodesList_[ring]);
+                    scalar Ct_mod = Ct * pow(UrefYaw/mag(U_dCells),2);
+                    scalar Cp_mod = Cp * pow(UrefYaw/mag(U_dCells),3);
+                    float totalNormalForce = 0.5 * density_ * pow(mag(U_dCells),2) * Ct_mod * diskArea_;
+                    F_n_Bi = fn_scale * totalNormalForce * ringThickness_ / ringNodesList_[ring];
                     Info << "F_n_Bi = " << F_n_Bi << endl;
-                    F_tita_Bi = ft_scale * (0.5 * density_ * pow(UrefYaw,3) * Cp  * diskArea_/ omega) * ringThickness_/ (ringNodesList_[ring]);
+                    float totalTorque = 0.5 * density_ * pow(mag(U_dCells),3) * Cp_mod  * diskArea_ / omega;
+                    F_tita_Bi = ft_scale * totalTorque * ringThickness_/ ringNodesList_[ring];
                     Info << "F_tita_Bi = " << F_tita_Bi << endl;
+
                     F_n_Bi /= density_;
                     F_tita_Bi /= density_;
                 }

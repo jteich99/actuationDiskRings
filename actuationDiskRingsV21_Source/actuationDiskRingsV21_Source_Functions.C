@@ -286,15 +286,9 @@ float sumForcesVanDerLaan(
         if ( Uref2List_[i] == UrefList_[posUref] )
         {
             if (force == 1) {
-                forceValue = fnList_[i];
+                sumForces += (rList_[i+1] - rList_[i]) * 0.5 * (fnList_[i+1] + fnList_[i]); 
             } else if (force == 2) {
-                forceValue = ftList_[i] * rList_[i] * 0.5;
-            }
-            // sumForces = sumForces +  forceValue;
-            if (rList_[i+1] == 0) {
-                sumForces = sumForces + forceValue * (maxR - rList_[i]);
-            } else {
-                sumForces = sumForces + forceValue * (rList_[i+1] - rList_[i]);
+                sumForces += (rList_[i+1] - rList_[i]) * 0.5 * (ftList_[i+1] * rList_[i+1] + ftList_[i] * rList_[i]); 
             }
         }
     }
