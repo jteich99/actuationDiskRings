@@ -316,7 +316,6 @@ scalar Foam::fv::actuationDiskRingsV21_Source::addactuationDiskRings_AxialInerti
     Info << "U_dCells yawed: " << U_dCellsYaw << endl;
     Info << "U_dCells: " << U_dCells << endl;
 
-    // --- save velocity in each node ----
     scalar t = mesh().time().value();
     const volVectorField &U_ = mesh().lookupObject<volVectorField>("U");
     volTensorField gradU = fvc::grad(U_);
@@ -1134,10 +1133,6 @@ scalar Foam::fv::actuationDiskRingsV21_Source::addactuationDiskRings_AxialInerti
             // change of coordinate system
             Bi_ntr = inv(transform) & Bi;
 
-            //----- Calculate velocity in node ------------------------------------------
-            // calculate velocity in node
-            total_nodes_counter += 1;
-
             // change of coordinate system
             U_dPointCells_ntr = inv(transform) & U_dPointCells;
 
@@ -1166,6 +1161,12 @@ scalar Foam::fv::actuationDiskRingsV21_Source::addactuationDiskRings_AxialInerti
                 // very similar to convolution distribution form Mikkelsen PhD thesis in 2003
                 // difference that here it decomposes in the directions.That part inside the exponential isn't exactly the same as in Mikkelsen proposal
                 if (forceDistributionMethod_==0) { // no force distribution. Forces are applied directly in cell that contains the node
+                    if (nodeCellID_[total_nodes_counter] != -1) // if the closer cell is in this procesor
+                    {
+                        weightCells[cellsDisc[c]] = 1; 
+                    } else {
+                        weightCells[cellsDisc[c]] = 0; 
+                    }
 
                 }
                 else if (forceDistributionMethod_==1) { 
@@ -1438,6 +1439,8 @@ scalar Foam::fv::actuationDiskRingsV21_Source::addactuationDiskRings_AxialInerti
             } // close loop cells in sectional point
             // --- End of force distribution in cells -----------------------------------------------------------------------
 
+
+            total_nodes_counter += 1;
         } // close loop in ring
         //---- End of loop through nodes in ring to calculate and distribute forces ----------------
 
