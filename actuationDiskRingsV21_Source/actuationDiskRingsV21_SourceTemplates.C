@@ -320,6 +320,7 @@ scalar Foam::fv::actuationDiskRingsV21_Source::addactuationDiskRings_AxialInerti
     Info << "U_dCells yawed: " << U_dCellsYaw << endl;
     Info << "U_dCells: " << U_dCells << endl;
 
+    // --- store velocity in each node in a list to avoid re-calculating it every time it's needed----
     scalar t = mesh().time().value();
     const volVectorField &U_ = mesh().lookupObject<volVectorField>("U");
     volTensorField gradU = fvc::grad(U_);
@@ -427,7 +428,7 @@ scalar Foam::fv::actuationDiskRingsV21_Source::addactuationDiskRings_AxialInerti
         UrefYaw = Uref_ * cosUinfAngle;
         // upRho = 1;
         omega = omega_;
-        // scalar lambda = maxR * omega / UrefYaw;
+        scalar lambda = maxR * omega / UrefYaw;
         Ct = Ct_;
         Cp = Cp_;
 
@@ -502,8 +503,8 @@ scalar Foam::fv::actuationDiskRingsV21_Source::addactuationDiskRings_AxialInerti
                     float xNode = radius / maxR_;
                     float nodeArea = ringAreaList_[ring];
 
-                    gNode = rootFactorFunction(rootFactor_, xNode, rootDistance_, phi, lambda_, U_dPointCells, UrefYaw);
-                    FNode = tipFactorFunction(tipFactor_, xNode, lambda_, phi, U_dPointCells, UrefYaw);
+                    gNode = rootFactorFunction(rootFactor_, xNode, rootDistance_, phi, lambda, U_dPointCells, UrefYaw);
+                    FNode = tipFactorFunction(tipFactor_, xNode, lambda, phi, U_dPointCells, UrefYaw);
 
                     if ( ADmodel_ == 0 ){
                         sumF_n_Bi += fn * nodeArea;
