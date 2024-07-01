@@ -305,10 +305,14 @@ scalar Foam::fv::actuationDiskRingsV21_Source::addactuationDiskRings_AxialInerti
 
     if (UdCorrection_ == 1) {
         // scalar axialInductionFactor = 0.5 - 0.5 * sqrt(1 - Ct);
+        Info << "U_dCells uncorrected: " << U_dCellsYaw << endl;
         scalar axialInductionFactor = 0.5 - 0.5 * sqrt(1 - CtPrevious);
         float Ct_modified = CtPrevious / pow(1 - axialInductionFactor,2);
         scalar correctionScalar = pow( 1 + ( Ct_modified * E )/(2 * sqrt(2 * M_PI) * maxR_) ,-1);
+        Info << "correction scalar: " << correctionScalar << endl;
         U_dCellsYaw *= correctionScalar;
+        U_dCells *= correctionScalar;
+        Info << "U_dCells corrected: " << U_dCellsYaw << endl;
     }
 
     Info << "U_dCenterCells not yawed: " << mag(U_dCenterCells) << endl;
