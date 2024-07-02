@@ -1084,10 +1084,10 @@ scalar Foam::fv::actuationDiskRingsV21_Source::addactuationDiskRings_AxialInerti
     scalar sumFn;
     scalar sumFt;
     if (ADmodel_ == 6) {
-        sumFn1 = sumForcesVanDerLaan(1, pos1, UrefList_, Uref2List_, rList_, fnList_, ftList_, maxR_);
-        sumFt1 = sumForcesVanDerLaan(2, pos1, UrefList_, Uref2List_, rList_, fnList_, ftList_, maxR_);
-        sumFn2 = sumForcesVanDerLaan(1, pos2, UrefList_, Uref2List_, rList_, fnList_, ftList_, maxR_);
-        sumFt2 = sumForcesVanDerLaan(2, pos2, UrefList_, Uref2List_, rList_, fnList_, ftList_, maxR_);
+        sumFn1 = sumForcesVanDerLaan(1, pos1, UrefList_, Uref2List_, rList_, fnList_, ftList_, ringThickness_, maxR_);
+        sumFt1 = sumForcesVanDerLaan(2, pos1, UrefList_, Uref2List_, rList_, fnList_, ftList_, ringThickness_, maxR_);
+        sumFn2 = sumForcesVanDerLaan(1, pos2, UrefList_, Uref2List_, rList_, fnList_, ftList_, ringThickness_, maxR_);
+        sumFt2 = sumForcesVanDerLaan(2, pos2, UrefList_, Uref2List_, rList_, fnList_, ftList_, ringThickness_, maxR_);
         sumFn = ((UrefYaw - UrefList_[pos1]) * ((sumFn2) - (sumFn1)) / (UrefList_[pos2] - UrefList_[pos1])) + (sumFn1);
         sumFt = ((UrefYaw - UrefList_[pos1]) * ((sumFt2) - (sumFt1)) / (UrefList_[pos2] - UrefList_[pos1])) + (sumFt1);
     }
@@ -1327,10 +1327,11 @@ scalar Foam::fv::actuationDiskRingsV21_Source::addactuationDiskRings_AxialInerti
                     scalar Cp_mod = Cp * pow(UrefYaw/mag(U_dCells),3);
                     float totalNormalForce = 0.5 * density_ * pow(mag(U_dCells),2) * Ct_mod * diskArea_;
                     F_n_Bi = fn_scale * totalNormalForce * ringThickness_ / ringNodesList_[ring];
-                    Info << "F_n_Bi = " << F_n_Bi << endl;
+                    // Info << "F_n_Bi = " << F_n_Bi << endl;
                     float totalTorque = 0.5 * density_ * pow(mag(U_dCells),3) * Cp_mod  * diskArea_ / omega;
                     F_tita_Bi = ft_scale * totalTorque * ringThickness_/ ringNodesList_[ring];
-                    Info << "F_tita_Bi = " << F_tita_Bi << endl;
+                    // Info << "F_tita_Bi = " << F_tita_Bi << endl;
+                    // Info << "" << endl;
 
                     F_n_Bi /= density_;
                     F_tita_Bi /= density_;

@@ -277,6 +277,7 @@ float sumForcesVanDerLaan(
     List<scalar> rList_,
     List<scalar> fnList_,
     List<scalar> ftList_,
+    scalar ringThickness,
     float maxR
 ) {
     float sumForces = 0;
@@ -286,9 +287,11 @@ float sumForcesVanDerLaan(
         if ( Uref2List_[i] == UrefList_[posUref] )
         {
             if (force == 1) {
-                sumForces += (rList_[i+1] - rList_[i]) * 0.5 * (fnList_[i+1] + fnList_[i]); 
+                // sumForces += (rList_[i+1] - rList_[i]) * 0.5 * (fnList_[i+1] + fnList_[i]); 
+                sumForces += ringThickness * 0.5 * (fnList_[i+1] + fnList_[i]); 
             } else if (force == 2) {
-                sumForces += (rList_[i+1] - rList_[i]) * 0.5 * (ftList_[i+1] * rList_[i+1] + ftList_[i] * rList_[i]); 
+                // sumForces += (rList_[i+1] - rList_[i]) * 0.5 * (ftList_[i+1] * rList_[i+1] + ftList_[i] * rList_[i]); 
+                sumForces += ringThickness * 0.5 * (ftList_[i+1] * rList_[i+1] + ftList_[i] * rList_[i]); 
             }
         }
     }

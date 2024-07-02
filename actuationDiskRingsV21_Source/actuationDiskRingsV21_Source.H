@@ -640,6 +640,7 @@ float sumForcesVanDerLaan(
     Foam::List<Foam::scalar> rList_,
     Foam::List<Foam::scalar> fnList_,
     Foam::List<Foam::scalar> ftList_,
+    Foam::scalar ringThickness,
     float maxR
 );
 
