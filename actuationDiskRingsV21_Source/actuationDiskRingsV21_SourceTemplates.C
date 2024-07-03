@@ -449,7 +449,7 @@ scalar Foam::fv::actuationDiskRingsV21_Source::addactuationDiskRings_AxialInerti
         // uniform normal and tangential surface forces
         if ( ADmodel_ == 0 ){
             fn = thrust / diskArea_;
-            ft = (3 * torque) / (2 * M_PI * pow(maxR_, 2)); // for local ft you need to divide by radius
+            ft = (torque) / (2 * M_PI * pow(maxR_, 2)); // for local ft you need to divide by radius
             Info << "fn mean = " << fn << endl;
             Info << "ft mean = " << ft << endl;
         }
