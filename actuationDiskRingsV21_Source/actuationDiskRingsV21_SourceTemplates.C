@@ -449,7 +449,7 @@ scalar Foam::fv::actuationDiskRingsV21_Source::addactuationDiskRings_AxialInerti
         // uniform normal and tangential surface forces
         if ( ADmodel_ == 0 ){
             fn = thrust / diskArea_;
-            ft = (3 * torque) / (2 * M_PI * pow(maxR_, 3));
+            ft = (3 * torque) / (2 * M_PI * pow(maxR_, 2)); // for local ft you need to divide by radius
             Info << "fn mean = " << fn << endl;
             Info << "ft mean = " << ft << endl;
         }
@@ -510,8 +510,8 @@ scalar Foam::fv::actuationDiskRingsV21_Source::addactuationDiskRings_AxialInerti
                         sumF_n_Bi += fn * nodeArea;
                         sumF_n_Bixfactor += gNode * FNode * fn * nodeArea;
                         if (xNode > 0) {
-                            sumTorque_Bi += ft * nodeArea;
-                            sumTorque_Bixfactor += gNode * FNode * ft * nodeArea;
+                            sumTorque_Bi += ft * nodeArea / radius;
+                            sumTorque_Bixfactor += gNode * FNode * ft * nodeArea / radius;
                         }
                     } else if ( ADmodel_ == 5 ) {
                         float density = 1.225;
@@ -1241,7 +1241,7 @@ scalar Foam::fv::actuationDiskRingsV21_Source::addactuationDiskRings_AxialInerti
                 // Info << "FNode = " << FNode << endl;
 
                 F_n_Bi = gNode * FNode * scale_factor_n * fn * nodeArea;
-                F_tita_Bi = gNode * FNode * scale_factor_t * ft * nodeArea;
+                F_tita_Bi = gNode * FNode * scale_factor_t * ft * nodeArea / radius;
 
             } else if (
                 (ADmodel_ == 1) or
