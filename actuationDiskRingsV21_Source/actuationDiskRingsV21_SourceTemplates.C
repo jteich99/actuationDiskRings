@@ -1241,7 +1241,11 @@ scalar Foam::fv::actuationDiskRingsV21_Source::addactuationDiskRings_AxialInerti
                 // Info << "FNode = " << FNode << endl;
 
                 F_n_Bi = gNode * FNode * scale_factor_n * fn * nodeArea;
-                F_tita_Bi = gNode * FNode * scale_factor_t * ft * nodeArea / radius;
+                if (radius > 0) {
+                    F_tita_Bi = gNode * FNode * scale_factor_t * ft * nodeArea / radius;
+                } else {
+                    F_tita_Bi = 0;
+                }
 
             } else if (
                 (ADmodel_ == 1) or
