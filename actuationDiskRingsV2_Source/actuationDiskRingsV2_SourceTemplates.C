@@ -694,12 +694,12 @@ for (int ring =0; ring<=(numberRings_-1); ring=ring+1)
         scalar invDr = 0.0;
         blade_.interpolate(radius, twist, chord, i1, i2, invDr);        
 
-        Info << "Uref = " << UrefYaw << endl;
-        Info << "radius = " << radius << endl;
-        Info << "twist [deg] = " << twist * 180 / M_PI << endl;
-        Info << "pitch [deg] = " << pitch * 180 / M_PI << endl;
-        Info << "Uref = " << UrefYaw << endl;
-        Info << "phi [deg] = " << phi * 180 / M_PI << endl;
+        // Info << "Uref = " << UrefYaw << endl;
+        // Info << "radius = " << radius << endl;
+        // Info << "twist [deg] = " << twist * 180 / M_PI << endl;
+        // Info << "pitch [deg] = " << pitch * 180 / M_PI << endl;
+        // Info << "Uref = " << UrefYaw << endl;
+        // Info << "phi [deg] = " << phi * 180 / M_PI << endl;
         beta = pitch + twist;
 	
      //    Info << "twist (deg) " <<  twist*360/(2*M_PI) << endl;	
@@ -708,11 +708,11 @@ for (int ring =0; ring<=(numberRings_-1); ring=ring+1)
 
         if (omega < 0)
         {
-            Info << "omega is negative "  << endl;
+            // Info << "omega is negative "  << endl;
             beta = M_PI - beta;
             // Info << "beta = M_PI - beta = " <<  beta << endl;
         }
-        Info << "beta [deg] = " << beta * 180 / M_PI << endl;
+        // Info << "beta [deg] = " << beta * 180 / M_PI << endl;
 
         alpha = phi - beta;
         // Info << "alpha (local attack angle) (deg) " <<  alpha*360/(2*M_PI) << endl;
@@ -733,31 +733,31 @@ for (int ring =0; ring<=(numberRings_-1); ring=ring+1)
         const label profile2 = blade_.profileID()[i2];
 
         // alpha *= (180 / M_PI);
-        Info << "alpha [deg]: " << alpha * 180 / M_PI << endl;
+        // Info << "alpha [deg]: " << alpha * 180 / M_PI << endl;
         scalar Cd1 = 0.0;
         scalar Cl1 = 0.0;
         profiles_[profile1].Cdl(alpha, Cd1, Cl1);
-        Info << "profile 1: " << profiles_[profile1].name() << endl;
-        Info << "Cd1: " << Cd1 << endl;
-        Info << "Cl1: " << Cl1 << endl;
+        // Info << "profile 1: " << profiles_[profile1].name() << endl;
+        // Info << "Cd1: " << Cd1 << endl;
+        // Info << "Cl1: " << Cl1 << endl;
 
         scalar Cd2 = 0.0;
         scalar Cl2 = 0.0;
         profiles_[profile2].Cdl(alpha, Cd2, Cl2);
-        Info << "profile 2: " << profiles_[profile2].name() << endl;
-        Info << "Cd2: " << Cd2 << endl;
-        Info << "Cl2: " << Cl2 << endl;
-        Info << "invDr: " << invDr << endl;
+        // Info << "profile 2: " << profiles_[profile2].name() << endl;
+        // Info << "Cd2: " << Cd2 << endl;
+        // Info << "Cl2: " << Cl2 << endl;
+        // Info << "invDr: " << invDr << endl;
 
         scalar Cd = invDr*(Cd2 - Cd1) + Cd1;
         scalar Cl = invDr*(Cl2 - Cl1) + Cl1;
-        Info << "Cd: " << Cd << endl;
-        Info << "Cl: " << Cl << endl;
+        // Info << "Cd: " << Cd << endl;
+        // Info << "Cl: " << Cl << endl;
 
         CdList.append(Cd);
         ClList.append(Cl);
 
-        Info << "" << endl;
+        // Info << "" << endl;
 
         //total force [N]
         F_Bi = ringThickness_*0.5*pow(mag(Urel),2)*chord*3/ringNodesList_[ring];
