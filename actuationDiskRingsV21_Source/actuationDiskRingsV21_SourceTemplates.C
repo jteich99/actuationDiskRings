@@ -1195,7 +1195,7 @@ scalar Foam::fv::actuationDiskRingsV21_Source::addactuationDiskRings_AxialInerti
                 }
                 else if (forceDistributionMethod_==4) {  
                     // force distribution with delta function of Li 2022
-                    float diskCellSize = 0.5 * 2 * maxR_ / cellSize_;
+                    float diskCellSize = 0.5 * cellSize_;
                     float d_cellCentre_node = mag(Pi_ntr - Bi_ntr);
                     float d_adim = d_cellCentre_node / diskCellSize;
                     if (d_adim <= 0.5) {
