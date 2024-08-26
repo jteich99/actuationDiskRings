@@ -766,22 +766,30 @@ for (int ring =0; ring<=(numberRings_-1); ring=ring+1)
         // Info << "total force F_Bi "<< F_Bi << endl;
 
         //Shen tip correction factor:
-        scalar fcorr=0.0;
-        scalar tipfactor = 1;
-        scalar c1=0.125;
-        scalar c2=27; //27
-        scalar c3=0.1;
-        scalar g =1;
-        scalar tipfactor_f = (nblades_/2)*(maxR - radius)/(radius*sin(phi));
-        // Info << "tipfactor_f " << tipfactor_f << endl;
-        g=exp(-c1*(nblades_*tsr-c2))+c3;
-        if (tipfactor_f > 0)
-                {
-                if(((exp(-g*tipfactor_f))>-1) and ((exp(-g*tipfactor_f))<1))
-                        {
-                        tipfactor = (2/(M_PI))*acos(exp(-g*tipfactor_f));
-                        }
-                }
+        // scalar fcorr=0.0;
+        // scalar tipfactor = 1;
+        // scalar c1=0.125;
+        // scalar c2=27; //27
+        // scalar c3=0.1;
+        // scalar g =1;
+        // scalar tipfactor_f = (nblades_/2)*(maxR - radius)/(radius*sin(phi));
+        // // Info << "tipfactor_f " << tipfactor_f << endl;
+        // g=exp(-c1*(nblades_*tsr-c2))+c3;
+        // if (tipfactor_f > 0)
+        // {
+        //     if(((exp(-g*tipfactor_f))>-1) and ((exp(-g*tipfactor_f))<1))
+        //     {
+        //         tipfactor = (2/(M_PI))*acos(exp(-g*tipfactor_f));
+        //     }
+        // }
+
+        // Glauert tip correction factor:
+        if (phi == 0) {
+            F = 1; // f = 1/0 = infty, then exp(-infty)=0, then acos(0) = pi/2, then F=1
+        } else if (x > 0) {
+            scalar f = (nblades_ / 2) * (1 - x) / (x * std::sin(phi));
+            tipfactor = (2 / (M_PI)) * std::acos(std::exp(-f));
+        }
 
         // Info << "tipfactor: "<<tipfactor<<endl;
             //
