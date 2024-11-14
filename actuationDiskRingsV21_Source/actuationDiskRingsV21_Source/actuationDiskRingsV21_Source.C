@@ -1,14 +1,11 @@
 /*---------------------------------------------------------------------------*\
-Author: Dimas Alejandro Barile
-CSC - CONICET, Buenos Aires, 2022
+Authors: Juan Ignacio Teich & Dimas Alejandro Barile
+CSC - CONICET, Buenos Aires
 
 -----------------------------------------------------------------------------
-OpenFOAM 2.4
+OpenFOAM
 
 Actuation Disk
-
-COMPLETAR
-
 -----------------------------------------------------------------------------
 
 Class
@@ -112,7 +109,7 @@ Foam::fv::actuationDiskRingsV21_Source::actuationDiskRingsV21_Source(
     const word &modelType,
     const dictionary &dict,
     const fvMesh &mesh)
-    : cellSetOption(name, modelType, dict, mesh),
+    : fv::cellSetOption(name, modelType, dict, mesh),
       // option(name, modelType, dict, mesh), //---new line
       diskDir_(coeffs_.lookup("diskDir")),
       Cp_(readScalar(coeffs_.lookup("Cp"))),
@@ -678,7 +675,7 @@ void Foam::fv::actuationDiskRingsV21_Source::addSup(
 
 bool Foam::fv::actuationDiskRingsV21_Source::read(const dictionary &dict)
 {
-    if (cellSetOption::read(dict))
+    if (fv::cellSetOption::read(dict))
     // if (option::read(dict)) //---new line
     {
         coeffs_.readIfPresent("diskDir", diskDir_);

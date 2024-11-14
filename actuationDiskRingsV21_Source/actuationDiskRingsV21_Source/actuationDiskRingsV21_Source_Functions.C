@@ -1,4 +1,13 @@
-// #include "actuationDiskRingsV21_Source.H"
+/*---------------------------------------------------------------------------*\
+Author: Juan Ignacio Teich
+CSC - CONICET, Buenos Aires
+
+-----------------------------------------------------------------------------
+Functions for use in actuationDiskRingsV21_Source
+-----------------------------------------------------------------------------
+
+\*---------------------------------------------------------------------------*/
+
 #include "volFields.H"
 #include <functional>
 #include <math.h>

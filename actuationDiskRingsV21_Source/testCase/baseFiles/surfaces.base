@@ -1,0 +1,23 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+| =========                 |                                                 |
+| \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           |
+|  \\    /   O peration     | Version:  v2112                                 |
+|   \\  /    A nd           | Website:  www.openfoam.com                      |
+|    \\/     M anipulation  |                                                 |
+\*---------------------------------------------------------------------------*/
+
+#include "../includeSettings"
+
+surfaces
+{
+    type            surfaces;
+    libs            (sampling);
+    writeControl    writeTime;
+
+    surfaceFormat   vtk;
+    fields          (U disk1:rotorForce);
+
+    // interpolationScheme cellPoint;  //<- default
+
+    surfaces
+    {

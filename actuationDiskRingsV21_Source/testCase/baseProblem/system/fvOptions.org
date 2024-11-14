@@ -1,0 +1,84 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+| =========                 |                                                 |
+| \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           |
+|  \\    /   O peration     | Version:  2.4.0                                 |
+|   \\  /    A nd           | Web:      www.OpenFOAM.org                      |
+|    \\/     M anipulation  |                                                 |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       dictionary;
+    location    "system";
+    object      fvOptions;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+#include    "../includeSettings"
+
+disk1
+{
+    //type            actuationDiskV7b_test_Source;
+    //type            actuationDiskV7b_Source;
+    //type            actuationDiskV7c_Source;
+    //type            actuationDiskV7d_Source;
+    //type            actuationDiskV7b_calib_Source;
+    //type            actuationDiskV10a_calib_Source;
+    //type            actuationDiskV10a_Source;
+    //type            actuationDiskV10b_calib_Source;
+    //type            actuationDiskV10b_Source;
+    //type            actuationDiskRings_calib_Source;
+    //type            actuationDiskRings_Source;
+    //type            actuationDiskRingsV1c_Source;
+    //type            actuationDiskRingsV10b_calib_Source;
+    //type            actuationDiskRingsV10b_Source;
+    //type            actuationDiskSource;
+    type            actuationDiskRingsV11_calib_Source;
+    active          on;            //on/off switch
+    //selectionMode   cellSet;       //cellSet // points //cellZone
+    //cellSet         actuationDisk1;//cellSet name when selectionMode = cellSet
+
+
+    //actuationDiskV7b_test_SourceCoeffs
+    //actuationDiskV7b_SourceCoeffs
+    //actuationDiskV7c_SourceCoeffs
+    //actuationDiskV7d_SourceCoeffs
+    //actuationDiskV7b_calib_SourceCoeffs
+    //actuationDiskV10a_calib_SourceCoeffs
+    //actuationDiskV10a_SourceCoeffs
+    //actuationDiskV10b_calib_SourceCoeffs
+    //actuationDiskV10b_SourceCoeffs
+    //actuationDiskRings_calib_SourceCoeffs
+    //actuationDiskRings_SourceCoeffs
+    //actuationDiskRingsV1c_SourceCoeffs
+    //actuationDiskRingsV10b_calib_SourceCoeffs
+    //actuationDiskRingsV10b_SourceCoeffs
+    actuationDiskRingsV11_calib_SourceCoeffs
+    {
+        selectionMode   cellSet;
+        cellSet         actuationDisk1;
+        fieldNames  (U);
+        diskDir     (1 0 0);        // orientation of the flow
+        Ct          $Ct;            //Ct
+        Cp          $Cp;            //Cp
+        Uinf        $Uinf;          //Inlet Velocity
+        yaw         $yaw;           //yaw angle (positive is against clock wise)
+        pitch       $pitch;         //Not used in this AD
+        omega       $omega;         // rad/s
+        cellSize    $cellSize;      //fixed min cell size in disc
+        diskArea    $Area;          //disk area
+	      diskPoint   ($diskPoint_x $diskPoint_y $diskPoint_z); //disk center point
+        rootFactor  0;              //1-On, 0-Off
+        rootDistance    0.1;        //root as a fraction of Diameter [D]
+        tipFactor   0;              //1-On, 0-Off
+        nodesCellsRatio    2;       //Ratio Total amount of nodes / CellsInAD.
+        rThicknessCellsizeRatio  0.5;//Ratio ring Thickness / cellSize
+        density     1.225;          //kg/m3. 1.225 means air
+        gradInterpolation  1;       //1-On, 0-Off
+        //#include        "./system/listfvOptions_actuationDiskV11_Source.txt"
+    }
+}
+
+
+// ************************************************************************* //

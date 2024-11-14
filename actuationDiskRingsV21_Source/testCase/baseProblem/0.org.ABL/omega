@@ -1,0 +1,59 @@
+    /*--------------------------------*- C++ -*----------------------------------*\
+| =========                 |                                                 |
+| \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           |
+|  \\    /   O peration     | Version:  2.3.1                                 |
+|   \\  /    A nd           | Web:      www.OpenFOAM.org                      |
+|    \\/     M anipulation  |                                                 |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       volScalarField;
+    location    "0";
+    object      epsilon;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+dimensions      [0 0 -1 0 0 0 0];
+
+#include        "include/initialConditions"
+
+internalField   uniform $turbulentOmega;
+
+boundaryField
+{
+    outlet
+    {
+        type            inletOutlet;
+        inletValue      uniform $turbulentOmega;
+        value           $internalField;
+    }
+
+    inlet
+    {
+        type            atmBoundaryLayerInletOmega;
+        #include        "include/ABLConditions"
+    }
+
+    terrain
+    {
+        type            omegaWallFunction;
+        //Cmu             0.09; Son las constantes que pone por default, no hace falt agreSgarlas
+        //kappa           0.41;
+        value           $internalField; //Es un initial condition para que despues calcule el valor que va en la wall. OPmega wall function se adapta al y+
+    }
+
+    ground
+    {
+        type            omegaWallFunction;
+        //Cmu             0.09;
+        //kappa           0.41;
+        value           $internalField;
+    }
+
+    #include "include/sideAndTopPatches"
+}
+
+
+// ************************************************************************* //

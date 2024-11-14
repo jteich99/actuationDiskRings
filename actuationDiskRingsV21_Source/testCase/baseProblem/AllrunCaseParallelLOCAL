@@ -1,0 +1,37 @@
+#----------------------------------------
+# created by Juan Ignacio Teich
+# Facultad de Ingeniería, UBA
+# jteich@fi.uba.ar
+#----------------------------------------
+
+#!/bin/sh
+cd ${0%/*} || exit 1
+#---Call the OpenFOAM functions
+. $WM_PROJECT_DIR/bin/tools/RunFunctions
+
+#---RUN decomposePar
+runApplication decomposePar
+find . -type f -iname "*level*" -exec rm {} \;
+ls -d processor* | xargs -i cp -r 0.org ./{}/0 $1
+
+#---RUN topoSet & application
+runParallel topoSet
+start_time=$(date +%s)
+runParallel `getApplication`
+finish_time=$(date +%s)
+echo "Time duration simpleFoam: $((finish_time - start_time)) secs." > log.simpleTime
+mv log.simpleFoam log.simpleFoam2
+
+#--RUN last time to write forces
+mv system/controlDict system/controlDict0
+cp system/controlDict1 system/controlDict
+runParallel `getApplication`
+
+#---RUN reconstructPar
+runApplication reconstructParMesh -constant
+runApplication reconstructPar
+
+#---REMOVE processor* DIRECTORIES
+rm -r processor*
+
+#----------------------------------------

@@ -1,0 +1,124 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+| =========                 |                                                 |
+| \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           |
+|  \\    /   O peration     | Version:  v2112                                 |
+|   \\  /    A nd           | Website:  www.openfoam.com                      |
+|    \\/     M anipulation  |                                                 |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    version         2.0;
+    format          ascii;
+    class           dictionary;
+    object          sample;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+#include "../includeSettings"
+
+type            sets;
+libs            (sampling);
+interpolationScheme cellPoint;
+setFormat       csv;
+fields          (U disk1:rotorForce);
+// fields          (U);
+
+sets
+(
+    xD0
+    {
+        type            uniform;
+        axis            x;
+        start           (0 #eval{ $y_2 * 0.5 + $D * 0 } $H);
+        end             ($x_2 #eval{ $y_2 * 0.5 + $D * 0 } $H);
+        nPoints         1000;
+    }
+    xD1
+    {
+        type            uniform;
+        axis            x;
+        start           (0 #eval{ $y_2 * 0.5 + $D * 1 } $H);
+        end             ($x_2 #eval{ $y_2 * 0.5 + $D * 1 } $H);
+        nPoints         1000;
+    }
+    yD1
+    {
+        type            uniform;
+        axis            y;
+        start           (#eval{ $D * 1 } 0 $H);
+        end             (#eval{ $D * 1 } $y_2 $H);
+        nPoints         1000;
+    }
+    yD3
+    {
+        type            uniform;
+        axis            y;
+        start           (#eval{ $D * 3 } 0 $H);
+        end             (#eval{ $D * 3 } $y_2 $H);
+        nPoints         1000;
+    }
+    yD5
+    {
+        type            uniform;
+        axis            y;
+        start           (#eval{ $D * 5 } 0 $H);
+        end             (#eval{ $D * 5 } $y_2 $H);
+        nPoints         1000;
+    }
+    yD7
+    {
+        type            uniform;
+        axis            y;
+        start           (#eval{ $D * 7 } 0 $H);
+        end             (#eval{ $D * 7 } $y_2 $H);
+        nPoints         1000;
+    }
+    yD9
+    {
+        type            uniform;
+        axis            y;
+        start           (#eval{ $D * 9 } 0 $H);
+        end             (#eval{ $D * 9 } $y_2 $H);
+        nPoints         1000;
+    }
+    yD11
+    {
+        type            uniform;
+        axis            y;
+        start           (#eval{ $D * 11 } 0 $H);
+        end             (#eval{ $D * 11 } $y_2 $H);
+        nPoints         1000;
+    }
+    yD13
+    {
+        type            uniform;
+        axis            y;
+        start           (#eval{ $D * 13 } 0 $H);
+        end             (#eval{ $D * 13 } $y_2 $H);
+        nPoints         1000;
+    }
+    yD15
+    {
+        type            uniform;
+        axis            y;
+        start           (#eval{ $D * 15 } 0 $H);
+        end             (#eval{ $D * 15 } $y_2 $H);
+        nPoints         1000;
+    }
+    yD20
+    {
+        type            uniform;
+        axis            y;
+        start           (#eval{ $D * 20 } 0 $H);
+        end             (#eval{ $D * 20 } $y_2 $H);
+        nPoints         1000;
+    }
+    yD24
+    {
+        type            uniform;
+        axis            y;
+        start           (#eval{ $D * 24 } 0 $H);
+        end             (#eval{ $D * 24 } $y_2 $H);
+        nPoints         1000;
+    }
+);

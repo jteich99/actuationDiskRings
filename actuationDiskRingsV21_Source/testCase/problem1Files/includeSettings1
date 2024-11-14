@@ -1,0 +1,94 @@
+//----PROBLEM 1 CONFIG FILE---------
+
+coresTotal 6;
+
+// Diameter 
+D 126;
+// domain corners x=x1, y=x2, z=x3----------
+x_0 0;
+y_0 0;
+z_0 0;
+x_1 3150;
+y_1 0;
+z_1 0;
+x_2 3150;
+y_2 1134;
+z_2 0;
+x_3 0;
+y_3 1134;
+z_3 0;
+x_4 0;
+y_4 0;
+z_4 1134;
+x_5 3150;
+y_5 0;
+z_5 1134;
+x_6 3150;
+y_6 1134;
+z_6 1134;
+x_7 0;
+y_7 1134;
+z_7 1134;
+
+// cells per axis (c_x c_y c_z)----------
+c_x 250 ;
+c_y 90 ;
+c_z 90 ;
+
+// cell expansion rate in each axis (ce_x ce_y ce_z)
+ce_x 1;
+ce_y 1;
+ce_z 1;
+
+// turbine height
+H 567.0;
+
+//----------actuador nro 1 ----------
+// center point of actuator N1
+diskPoint_x_1 630;
+diskPoint_y_1 567.0;
+diskPoint_z_1 567.0;
+
+// input para snappyHexMeshDict
+x1b_0_1 504;
+x1b_1_1 3150;
+x2b_0_1 378.0;
+x2b_1_1 756.0;
+x3b_0_1 378.0;
+x3b_1_1 756.0;
+
+// input para topoSetDict
+x1d_1_1 630;
+x1d_2_1 648.9;
+x2d_1_1 504.0;
+x2d_2_1 630.0;
+x3d_1_1 504.0;
+x3d_2_1 630.0;
+//---------------------------------
+//----------actuador nro 2 ----------
+// center point of actuator N2
+diskPoint_x_2 1260;
+diskPoint_y_2 693.0;
+diskPoint_z_2 567.0;
+
+// input para snappyHexMeshDict
+x1b_0_2 1134;
+x1b_1_2 3150;
+x2b_0_2 504.0;
+x2b_1_2 882.0;
+x3b_0_2 378.0;
+x3b_1_2 756.0;
+
+// input para topoSetDict
+x1d_1_2 1260;
+x1d_2_2 1278.9;
+x2d_1_2 630.0;
+x2d_2_2 756.0;
+x3d_1_2 504.0;
+x3d_2_2 630.0;
+//---------------------------------
+
+// variables para el fvOptions
+yaw 0;
+cellSize 6.3;
+Area 12468.981242097889;

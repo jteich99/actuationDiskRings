@@ -1,0 +1,38 @@
+}
+
+
+// Settings for the castellatedMesh generation.
+castellatedMeshControls
+{
+
+    maxLocalCells 100000;
+
+    maxGlobalCells 200000000;
+
+    minRefinementCells 2;
+
+    maxLoadUnbalance 0.10;
+
+    nCellsBetweenLevels 4;
+
+    features
+    (
+        //{
+        //    file "someLine.eMesh";
+        //    level 2;
+        //}
+    );
+
+    refinementSurfaces
+    {
+        //terrain
+        //{
+            // Surface-wise min and max refinement level
+        //    level (2 2);
+        //}
+    }
+
+    resolveFeatureAngle 30;
+
+    refinementRegions
+    {

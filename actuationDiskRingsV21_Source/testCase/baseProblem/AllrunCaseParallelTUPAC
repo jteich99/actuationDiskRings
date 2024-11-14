@@ -1,0 +1,43 @@
+#----------------------------------------
+# created by Juan Ignacio Teich
+# Facultad de Ingeniería, UBA
+# jteich@fi.uba.ar
+#----------------------------------------
+
+#!/bin/sh
+cd ${0%/*} || exit 1
+#---Call the OpenFOAM functions
+. $WM_PROJECT_DIR/bin/tools/RunFunctions
+
+#---RUN decomposePar
+runApplication decomposePar
+find . -type f -iname "*level*" -exec rm {} \;
+ls -d processor* | xargs -i cp -r 0.org ./{}/0 $1
+
+#---RUN topoSet & application
+# runParallel topoSet
+echo runnning topoSet
+mpirun --hostfile nodefile -mca pml ucx --mca btl ^vader,tcp,openib,uct -x UCX_NET_DEVICES=mlx4_0:1 topoSet -parallel > log.topoSet
+
+start_time=$(date +%s)
+
+# runParallel `getApplication`
+echo runnning simpleFoam 
+mpirun --hostfile nodefile -mca pml ucx --mca btl ^vader,tcp,openib,uct -x UCX_NET_DEVICES=mlx4_0:1 simpleFoam -parallel > log.simpleFoam
+
+finish_time=$(date +%s)
+echo "Time duration simpleFoam: $((finish_time - start_time)) secs." > log.simpleTime
+
+#--RUN last time to write forces
+mv system/controlDict system/controlDict0
+cp system/controlDict1 system/controlDict
+mpirun --hostfile nodefile -mca pml ucx --mca btl ^vader,tcp,openib,uct -x UCX_NET_DEVICES=mlx4_0:1 simpleFoam -parallel > log.simpleFoam2
+
+#---RUN reconstructPar
+runApplication reconstructParMesh -constant
+runApplication reconstructPar -latestTime
+
+#---REMOVE processor* DIRECTORIES
+rm -r processor*
+
+#----------------------------------------

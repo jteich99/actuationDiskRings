@@ -1,0 +1,30 @@
+problemNumber=1
+
+# NUMBER OF NODES & NUMBER OF CORES (TOTAL)
+nodes=1
+cores=6
+
+# problem Mesh Number
+# if != 0 then it will copy the mesh from the problem with the number specified
+problemMeshNumber=0
+
+# actuator diameter
+D=126
+
+# Cells per diameter:
+cD=10
+
+# boundary condition to apply
+BoundaryCond=SLIP
+
+# turbine height 
+H=567.0
+
+# velocity with step off
+Uinf=10
+Ustep='off'
+UrefDiff='no'
+
+# TI with step off
+TI=0.05
+TIstep='off'

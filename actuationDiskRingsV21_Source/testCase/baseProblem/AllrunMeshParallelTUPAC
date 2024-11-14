@@ -1,0 +1,32 @@
+#----------------------------------------
+# created by Juan Ignacio Teich
+# Facultad de Ingeniería, UBA
+# jteich@fi.uba.ar
+#----------------------------------------
+
+#!/bin/sh
+cd ${0%/*} || exit 1
+#---Call the OpenFOAM functions
+. $WM_PROJECT_DIR/bin/tools/RunFunctions
+
+#---MAKE DUMMY 0 DIRECTORY
+mkdir 0
+
+#---RUN blockMesh
+runApplication blockMesh
+checkMesh > log.checkMesh
+
+#---RUN decomposePar
+runApplication decomposePar
+
+#---RUN snappyHexMesh
+# runParallel snappyHexMesh -overwrite
+echo running snappyHexMesh
+mpirun --hostfile nodefile -mca pml ucx --mca btl ^vader,tcp,openib,uct -x UCX_NET_DEVICES=mlx4_0:1 snappyHexMesh -parallel -overwrite > log.snappyHexMesh
+
+#---RUN reconstructPar
+runApplication reconstructParMesh -constant
+runApplication reconstructPar
+checkMesh > log.checkSnappy
+
+#----------------------------------------

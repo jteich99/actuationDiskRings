@@ -1,0 +1,80 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+| =========                 |                                                 |
+| \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           |
+|  \\    /   O peration     | Version:  v2112                                 |
+|   \\  /    A nd           | Website:  www.openfoam.com                      |
+|    \\/     M anipulation  |                                                 |
+\*---------------------------------------------------------------------------*/
+
+#include "../includeSettings"
+
+surfaces
+{
+    type            surfaces;
+    libs            (sampling);
+    writeControl    writeTime;
+
+    surfaceFormat   vtk;
+    fields          (U disk1:rotorForce);
+
+    // interpolationScheme cellPoint;  //<- default
+
+    surfaces
+    {
+        zNormal1
+        {
+            type            cuttingPlane;
+            planeType       pointAndNormal;
+            pointAndNormalDict
+            {
+                point   (0 0 567.0);
+                normal  (0 0 1);
+            }
+            interpolate    true;
+        }
+        xNormal1
+        {
+            type            cuttingPlane;
+            planeType       pointAndNormal;
+            pointAndNormalDict
+            {
+                point   (630 0 0);
+                normal  (1 0 0);
+            }
+            interpolate    true;
+        }
+        xNormal2
+        {
+            type            cuttingPlane;
+            planeType       pointAndNormal;
+            pointAndNormalDict
+            {
+                point   (1008 0 0);
+                normal  (1 0 0);
+            }
+            interpolate    true;
+        }
+        xNormal3
+        {
+            type            cuttingPlane;
+            planeType       pointAndNormal;
+            pointAndNormalDict
+            {
+                point   (1260 0 0);
+                normal  (1 0 0);
+            }
+            interpolate    true;
+        }
+        xNormal4
+        {
+            type            cuttingPlane;
+            planeType       pointAndNormal;
+            pointAndNormalDict
+            {
+                point   (1638 0 0);
+                normal  (1 0 0);
+            }
+            interpolate    true;
+        }
+    }
+}

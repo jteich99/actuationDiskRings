@@ -1,0 +1,18 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+| =========                 |                                                 |
+| \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           |
+|  \\    /   O peration     | Version:  2.3.1                                 |
+|   \\  /    A nd           | Web:      www.OpenFOAM.org                      |
+|    \\/     M anipulation  |                                                 |
+\*---------------------------------------------------------------------------*/
+
+#include	"../../../includeSettings"
+
+Uref                 $Uinf;
+Zref                 $H; //turbine height
+z0                   uniform $Z0_TI;//uniform 0.00173;
+turbulentKE          $TKE;
+flowDir              (1 0 0);
+zDir                 (0 0 1);
+d                    uniform 0;
+// ************************************************************************* //

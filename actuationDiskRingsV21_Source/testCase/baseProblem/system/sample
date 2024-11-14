@@ -1,0 +1,128 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+| =========                 |                                                 |
+| \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           |
+|  \\    /   O peration     | Version:  v2112                                 |
+|   \\  /    A nd           | Website:  www.openfoam.com                      |
+|    \\/     M anipulation  |                                                 |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    version         2.0;
+    format          ascii;
+    class           dictionary;
+    object          sample;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+#include "../includeSettings"
+
+type            sets;
+libs            (sampling);
+interpolationScheme cellPoint;
+setFormat       csv;
+fields          ( U );
+
+sets
+(
+    D1
+    {
+        type            uniform;
+        axis            y;
+        start           (#eval{ 6 * $D } 0 $H);
+        end             (#eval{ 6 * $D } $y_2 $H);
+        nPoints         1000;
+    }
+
+    D2
+    {
+        type            uniform;
+        axis            y;
+        start           (#eval{7*$D} 0 $H);
+        end             (#eval{7*$D} $y_2 $H);
+        nPoints         1000;
+    }
+
+    D4
+    {
+        type            uniform;
+        axis            y;
+        start           (#eval{9*$D} 0 $H);
+        end             (#eval{9*$D} $y_2 $H);
+        nPoints         1000;
+    }
+
+    D6
+    {
+        type            uniform;
+        axis            y;
+        start           (#eval{11*$D} 0 $H);
+        end             (#eval{11*$D} $y_2 $H);
+        nPoints         1000;
+    }
+
+    D8
+    {
+        type            uniform;
+        axis            y;
+        start           (#eval{13*$D} 0 $H);
+        end             (#eval{13*$D} $y_2 $H);
+        nPoints         1000;
+    }
+
+    D10
+    {
+        type            uniform;
+        axis            y;
+        start           (#eval{15*$D} 0 $H);
+        end             (#eval{15*$D} $y_2 $H);
+        nPoints         1000;
+    }
+
+    D15
+    {
+        type            uniform;
+        axis            y;
+        start           (#eval{20*$D} 0 $H);
+        end             (#eval{20*$D} $y_2 $H);
+        nPoints         1000;
+    }
+
+    D20
+    {
+        type            uniform;
+        axis            y;
+        start           (#eval{25*$D} 0 $H);
+        end             (#eval{25*$D} $y_2 $H);
+        nPoints         1000;
+    }
+    //
+    // D25
+    // {
+    //     type            uniform;
+    //     axis            y;
+    //     start           (#eval{30*$D} 0 $H);
+    //     end             (#eval{30*$D} $y_2 $H);
+    //     nPoints         1000;
+    // }
+    //
+    // D30
+    // {
+    //     type            uniform;
+    //     axis            y;
+    //     start           (#eval{35*$D} 0 $H);
+    //     end             (#eval{35*$D} $y_2 $H);
+    //     nPoints         1000;
+    // }
+    //
+    // test
+    // {
+    //     type            uniform;
+    //     axis            y;
+    //     start           (#eval{35*$D} 0 $H);
+    //     end             (#eval{35*$D} $y_2 $H);
+    //     nPoints         1000;
+    // }
+);
+
+
+// ************************************************************************* //

@@ -1,0 +1,63 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+| =========                 |                                                 |
+| \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           |
+|  \\    /   O peration     | Version:  2.3.1                                 |
+|   \\  /    A nd           | Web:      www.OpenFOAM.org                      |
+|    \\/     M anipulation  |                                                 |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       volScalarField;
+    location    "0";
+    object      nut;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+dimensions      [0 2 -1 0 0 0 0];
+
+internalField   uniform 0;
+
+boundaryField
+{
+
+    #include "include/ABLConditions"
+        
+    inlet
+    {
+        type            calculated;
+        value           uniform 0;
+    }
+
+    outlet
+    {
+        type            calculated;
+        value           uniform 0;
+    }
+
+    terrain
+    {
+        type            nutUSpaldingWallFunction;
+        value           uniform 0; //Si no le ponemos el value se queja, creo que no hace nada. le pongo cero como si estuviese en la subcapa laminar
+    }
+
+    ground
+    {
+        type            nutUSpaldingWallFunction;
+        value           uniform 0;   
+    }
+ /*   ground
+    {
+        type            nutkAtmRoughWallFunction;
+        z0              $z0;
+        value           uniform 0.0;
+    
+    }
+
+*/
+    #include "include/sideAndTopPatches"
+}
+
+
+// ************************************************************************* //

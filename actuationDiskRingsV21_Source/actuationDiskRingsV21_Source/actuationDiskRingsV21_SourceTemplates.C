@@ -1,14 +1,11 @@
 /*---------------------------------------------------------------------------*\
-Author: Dimas Alejandro Barile
-CSC - CONICET, Buenos Aires, 2022
+Authors: Juan Ignacio Teich & Dimas Alejandro Barile
+CSC - CONICET, Buenos Aires
 
 -----------------------------------------------------------------------------
-OpenFOAM 2.4
+OpenFOAM
 
 Actuation Disk
-
-COMPLETAR
-
 -----------------------------------------------------------------------------
 
 Class

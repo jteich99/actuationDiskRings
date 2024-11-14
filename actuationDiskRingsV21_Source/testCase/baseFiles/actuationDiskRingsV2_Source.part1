@@ -1,0 +1,24 @@
+{
+    type            actuationDiskRingsV2_Source;
+    active          on;
+
+    actuationDiskRingsV2_SourceCoeffs
+    {
+        selectionMode   cellSet;        //cellSet // points //cellZone
+        fieldNames  (U);
+        diskDir     (1 0 0);            // orientation of the disk
+        Ct          $Ct;                // Ct
+        Cp          $Cp;                // Cp
+        Uinf        $Uinf;              // Uinf
+        yaw         $yaw;               // yaw angle (positive is against clock wise)
+        pitch       $pitch;
+        omega       $omega;
+        cellSize    $cellSize;          // fixed min cell size in disc, D=126
+        diskArea    $Area;              // disk area
+        rootFactor  1;                  //1-On, 0-Off
+        rootDistance    0.1;            //root as a fraction of Diameter [D]
+        tipFactor   1;                  //1-On, 0-Off
+        nodesCellsRatio    2;           //Ratio Total amount of nodes / CellsInAD.
+        rThicknessCellsizeRatio  0.5;   //Ratio ring Thickness / cellSize
+        density     1.225;              //kg/m3. 1.225 means air
+        gradInterpolation  1;           //1-On, 0-Off
